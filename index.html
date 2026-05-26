@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>グループで絵しりとり</title>
+    <title>連鎖絵しりとり - 4周サバイバル</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f0f2f5;
+            background-color: #f7f9fc;
             margin: 0;
             padding: 20px;
             display: flex;
@@ -18,98 +18,149 @@
         .container {
             background-color: #fff;
             padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.08);
             width: 100%;
-            max-width: 600px;
+            max-width: 650px;
             box-sizing: border-box;
             text-align: center;
         }
-        h1 { color: #2c3e50; margin-top: 0; }
+        h1 { color: #2c3e50; margin-top: 0; font-size: 24px; }
+        h2 { color: #34495e; font-size: 20px; }
         button {
             background-color: #3498db;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             font-size: 16px;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             margin-top: 15px;
+            font-weight: bold;
             transition: background 0.2s;
         }
         button:hover { background-color: #2980b9; }
         input[type="text"], input[type="number"] {
-            padding: 8px;
+            padding: 10px;
             font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
             margin: 5px;
             width: 80%;
+            box-sizing: border-box;
         }
+        input:focus { border-color: #3498db; outline: none; }
         .screen { display: none; }
         .screen.active { display: block; }
         
-        /* お絵描きエリア */
+        /* タイマー・お題 */
+        .odai-box {
+            background-color: #f1c40f;
+            color: #2c3e50;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        .timer { font-size: 24px; font-weight: bold; color: #e74c3c; margin: 10px 0; }
+        
+        /* キャンバス */
         #canvas {
-            border: 2px dashed #7f8c8d;
+            border: 3px solid #bdc3c7;
             border-radius: 8px;
             background-color: #fff;
             cursor: crosshair;
-            touch-action: none; /* タブレットでのスクロール防止 */
+            touch-action: none;
         }
-        .timer {
-            font-size: 24px;
-            font-weight: bold;
-            color: #e74c3c;
-            margin: 10px 0;
-        }
-        .hint-box {
-            background-color: #e8f4f8;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
-        .prev-image {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            margin-top: 10px;
-        }
-        .member-input { display: flex; align-items: center; justify-content: center; margin: 5px 0; }
-        .member-input label { width: 80px; text-align: right; margin-right: 10px; }
         
+        /* リレー履歴タイムライン */
+        .timeline-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .timeline-title { font-weight: bold; font-size: 14px; color: #7f8c8d; margin-bottom: 8px; text-align: center;}
+        .timeline-list { display: flex; flex-direction: column; gap: 10px; }
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .timeline-thumb { width: 50px; height: 50px; border: 1px solid #ddd; border-radius: 4px; object-fit: contain; }
+        .timeline-info { font-size: 14px; }
+
         /* 結果発表 */
         .result-item {
-            border-bottom: 1px solid #eee;
+            border-bottom: 2px solid #edf2f7;
             padding: 15px 0;
             text-align: left;
         }
-        .result-item:last-child { border-bottom: none; }
-        .result-img { max-width: 200px; display: block; margin-top: 5px; border: 1px solid #ccc; }
+        .result-img { max-width: 150px; display: block; margin-top: 5px; border: 1px solid #cbd5e0; }
+        .stats-box {
+            background-color: #e6fffa;
+            border: 2px solid #319795;
+            color: #234e52;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .mvp-box {
+            background-color: #fffaf0;
+            border: 2px solid #dd6b20;
+            color: #7b341e;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div id="screen-setup" class="screen active">
-        <h1>絵しりとりスタート！</h1>
+        <h1>🎨 連鎖絵しりとりゲー (4周制)</h1>
         <p>参加人数を入力してね：</p>
-        <input type="number" id="player-count" value="3" min="2" max="10" style="width: 60px; text-align: center;">
+        <input type="number" id="player-count" value="3" min="2" max="10" style="width: 70px; text-align: center;">
+        <br>
         <button onclick="generatePlayerInputs()">名前を入力する</button>
         <div id="name-inputs-container" style="margin-top: 20px;"></div>
-        <button id="start-game-btn" onclick="startGame()" style="display:none; background-color: #2ecc71;">ゲーム開始！</button>
+        <button id="start-game-btn" onclick="startGame()" style="display:none; background-color: #2ecc71;">お題を決めてスタート！</button>
     </div>
 
     <div id="screen-turn" class="screen">
+        <div id="turn-round-info" style="font-weight: bold; color: #7f8c8d;"></div>
         <h2 id="turn-message">〇〇さんの番です</h2>
-        <p class="alert-text">前の人の答えは見えないようになっています。準備ができたら進んでね！</p>
-        <div id="hint-area" class="hint-box" style="display:none;">
-            <div>前の人が描いた絵：</div>
-            <img id="prev-canvas-img" class="prev-image" alt="前の人の絵">
-            <div style="margin-top: 10px; font-weight: bold;">文字数ヒント: <span id="word-length-hint" style="color:#e67e22; font-size: 22px;"></span></div>
+        
+        <div class="odai-box">
+            最初の文字: <span id="start-char-display">?</span> ➔ 最後の文字: <span id="end-char-display">?</span>
         </div>
+
+        <div id="hint-area" style="background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <div style="font-weight: bold;">直前の人が描いた絵のヒント:</div>
+            <img id="prev-canvas-img" style="max-width:80%; height:auto; margin: 10px 0; border-radius:6px;" alt="前の人の絵">
+            <div style="font-size: 18px; font-weight: bold;">文字数: <span id="word-length-hint" style="color:#e67e22;"></span></div>
+        </div>
+
+        <div id="turn-timeline" class="timeline-container">
+            <div class="timeline-title">ーー これまでの絵のリレー ーー</div>
+            <div id="turn-timeline-list" class="timeline-list"></div>
+        </div>
+
         <button onclick="startDrawing()">お絵描きを始める</button>
     </div>
 
@@ -121,45 +172,63 @@
             <button onclick="clearCanvas()" style="background-color: #95a5a6;">描き直す</button>
             <button onclick="finishDrawing()" style="background-color: #2ecc71;">描けた！（正解入力へ）</button>
         </div>
+
+        <div id="draw-timeline" class="timeline-container">
+            <div class="timeline-title">ーー これまでの絵のリレー ーー</div>
+            <div id="draw-timeline-list" class="timeline-list"></div>
+        </div>
     </div>
 
     <div id="screen-answer" class="screen">
         <h2>今描いたものの「正解」は？</h2>
-        <p>※次の人には文字数だけが伝わります</p>
-        <input type="text" id="correct-answer" placeholder="ひらがなやカタカナがおすすめ">
-        <button onclick="submitAnswer()">決定して次の人へ</button>
+        <p style="color: #7f8c8d; font-size: 14px;">※ひらがな、またはカタカナで入力してね（最後の文字判定に使います）</p>
+        <input type="text" id="correct-answer" placeholder="例: りんご">
+        <button onclick="submitAnswer()">確定して次の人へ</button>
     </div>
 
     <div id="screen-result" class="screen">
         <h2>🎉 結果発表 🎉</h2>
+        
+        <div id="stats-area" class="stats-box"></div>
+        <div id="mvp-area" class="mvp-box"></div>
+        
+        <h3 style="text-align: left; margin-top: 20px;">しりとりリレーの全貌：</h3>
         <div id="result-list"></div>
-        <button onclick="location.reload()" style="background-color: #34495e;">もう一度遊ぶ</button>
+        
+        <button onclick="nextRound()" style="background-color: #e67e22;">次のラウンドへ（メンバーを引き継ぐ）</button>
+        <button onclick="location.reload()" style="background-color: #34495e; margin-left: 10px;">最初からやり直す</button>
     </div>
 </div>
 
 <script>
     let players = [];
-    let currentIndex = 0;
-    let gameData = []; // 各ターンの { player, image, answer } を保持
+    let currentIndex = 0; // 全体の通算ターンインデックス
+    let totalTurns = 0;  // 人数 × 4
+    let gameData = [];   // ターンごとの { player, image, answer, timeSpent }
     
     let timerInterval;
     let timeLeft = 60;
+    let timeSpent = 0; // 今回の作画にかかった時間
     
-    // キャンバス用の変数
+    // お題の文字
+    let startChar = "";
+    let endChar = "";
+    const hiragana = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわ";
+
+    // キャンバス用
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     let isDrawing = false;
 
-    // --- 1. 設定関連 ---
+    // 1. 設定
     function generatePlayerInputs() {
         const count = parseInt(document.getElementById('player-count').value);
         const container = document.getElementById('name-inputs-container');
         container.innerHTML = '';
-        
         for (let i = 1; i <= count; i++) {
             const div = document.createElement('div');
-            div.className = 'member-input';
-            div.innerHTML = `<label>プレイヤー${i}:</label><input type="text" class="player-name" value="プレイヤー${i}">`;
+            div.style.margin = "8px 0";
+            div.innerHTML = `プレイヤー${i}: <input type="text" class="player-name" value="プレイヤー${i}" style="width:60%">`;
             container.appendChild(div);
         }
         document.getElementById('start-game-btn').style.display = 'inline-block';
@@ -168,10 +237,20 @@
     function startGame() {
         const nameInputs = document.querySelectorAll('.player-name');
         players = Array.from(nameInputs).map(input => input.value.trim() || '名無し');
+        totalTurns = players.length * 4; // 人数 × 4週
         currentIndex = 0;
         gameData = [];
         
+        initRoundOdai();
         showTurnScreen();
+    }
+
+    // 最初と最後の文字を決定
+    function initRoundOdai() {
+        startChar = hiragana[Math.floor(Math.random() * hiragana.length)];
+        do {
+            endChar = hiragana[Math.floor(Math.random() * hiragana.length)];
+        } while (startChar === endChar); // 同じ文字にならないように
     }
 
     function changeScreen(screenId) {
@@ -179,51 +258,85 @@
         document.getElementById(screenId).classList.add('active');
     }
 
-    // --- 2. ターン開始画面 ---
+    // タイムラインHTMLを生成してセットする関数
+    function renderTimeline(elementId) {
+        const listEl = document.getElementById(elementId);
+        listEl.innerHTML = '';
+        if (gameData.length === 0) {
+            listEl.innerHTML = '<div style="color:#aaa; text-align:center; font-size:14px;">まだ履歴がありません（あなたが1人目です）</div>';
+            return;
+        }
+        gameData.forEach((data, idx) => {
+            const item = document.createElement('div');
+            item.className = 'timeline-item';
+            item.innerHTML = `
+                <img class="timeline-thumb" src="${data.image}">
+                <div class="timeline-info">
+                    <strong>${idx + 1}番手: ${data.player}</strong><br>
+                    <span style="color:#7f8c8d;">文字数: ${data.answer.length}文字</span>
+                </div>
+            `;
+            listEl.appendChild(item);
+        });
+    }
+
+    // 2. 交代画面
     function showTurnScreen() {
         changeScreen('screen-turn');
-        document.getElementById('turn-message').innerText = `${players[currentIndex]} さんの番です`;
+        
+        const currentRound = Math.floor(currentIndex / players.length) + 1;
+        const playerInRound = players[currentIndex % players.length];
+        
+        document.getElementById('turn-round-info').innerText = `【 ${currentRound} / 4 周目 】`;
+        document.getElementById('turn-message').innerText = `${playerInRound} さんの番`;
+        
+        document.getElementById('start-char-display').innerText = startChar;
+        document.getElementById('end-char-display').innerText = endChar;
         
         const hintArea = document.getElementById('hint-area');
         if (currentIndex > 0) {
             hintArea.style.display = 'block';
-            // 前のプレイヤーのデータを取得
             const prevTurn = gameData[currentIndex - 1];
             document.getElementById('prev-canvas-img').src = prevTurn.image;
-            // 文字数を「◯」に変換してヒントにする
             document.getElementById('word-length-hint').innerText = '〇'.repeat(prevTurn.answer.length) + ` (${prevTurn.answer.length}文字)`;
         } else {
-            hintArea.style.display = 'none'; // 1人目はヒントなし
+            hintArea.style.display = 'none'; // 本当の1人目はノーヒント
         }
+
+        renderTimeline('turn-timeline-list');
     }
 
-    // --- 3. お絵描き画面 ---
+    // 3. お絵描き画面
     function startDrawing() {
         changeScreen('screen-draw');
-        document.getElementById('drawer-name').innerText = `${players[currentIndex]} さん、描いて！`;
+        const playerInRound = players[currentIndex % players.length];
+        document.getElementById('drawer-name').innerText = `${playerInRound} さん、キャンバスに描いて！`;
+        
         clearCanvas();
         setupCanvasEvents();
+        renderTimeline('draw-timeline-list');
         
-        // タイマーリセット (1分 = 60秒)
         timeLeft = 60;
+        timeSpent = 0;
         document.getElementById('time-left').innerText = timeLeft;
+        
         clearInterval(timerInterval);
         timerInterval = setInterval(() => {
             timeLeft--;
+            timeSpent++;
             document.getElementById('time-left').innerText = timeLeft;
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
-                alert('時間切れです！正解入力に進みます。');
+                alert('時間切れ！正解入力へ移ります。');
                 finishDrawing();
             }
         }, 1000);
     }
 
-    // キャンバスの描画処理（マウス＆タッチ対応）
     function setupCanvasEvents() {
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.lineCap = 'round';
-        ctx.strokeStyle = '#000';
+        ctx.strokeStyle = '#2c3e50';
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
@@ -231,34 +344,12 @@
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
-
-        function start(e) {
-            isDrawing = true;
-            const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            e.preventDefault();
-            const pos = getPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-        }
-
+        function start(e) { isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); }
+        function draw(e) { if (!isDrawing) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
         function stop() { isDrawing = false; }
 
-        // マウスイベント
-        canvas.onmousedown = start;
-        canvas.onmousemove = draw;
-        canvas.onmouseup = stop;
-        canvas.onmouseleave = stop;
-
-        // タッチイベント（タブレット用）
-        canvas.ontouchstart = start;
-        canvas.ontouchmove = draw;
-        canvas.ontouchend = stop;
+        canvas.onmousedown = start; canvas.onmousemove = draw; canvas.onmouseup = stop; canvas.onmouseleave = stop;
+        canvas.ontouchstart = start; canvas.ontouchmove = draw; canvas.ontouchend = stop;
     }
 
     function clearCanvas() {
@@ -273,48 +364,117 @@
         document.getElementById('correct-answer').value = '';
     }
 
-    // --- 4. 正解入力画面 ---
+    // 4. 正解入力画面
     function submitAnswer() {
         const answerInput = document.getElementById('correct-answer').value.trim();
         if (!answerInput) {
-            alert('正解を入力してね！');
+            alert('正解のワードを入力してね！');
             return;
         }
 
-        // キャンバスの絵を画像データ(Base64)として保存
         const imageData = canvas.toDataURL();
+        const playerInRound = players[currentIndex % players.length];
         
-        // データを記録
         gameData.push({
-            player: players[currentIndex],
+            player: playerInRound,
             image: imageData,
-            answer: answerInput
+            answer: answerInput,
+            timeSpent: timeSpent
         });
 
         currentIndex++;
-        if (currentIndex < players.length) {
-            showTurnScreen(); // 次のプレイヤーへ
+        if (currentIndex < totalTurns) {
+            showTurnScreen();
         } else {
-            showResult(); // 全員終わったら結果発表
+            showResult();
         }
     }
 
-    // --- 5. 結果発表画面 ---
+    // 5. 結果発表画面
     function showResult() {
         changeScreen('screen-result');
+        
+        // --- 正答率の計算と判定 ---
+        let correctCount = 0;
+        let totalChecks = gameData.length; // 最初の文字チェック + 中間の繋ぎチェック + 最後の文字チェック
+        
+        // 1文字目がお題の開始文字と合っているか？
+        const firstWord = gameData[0].answer;
+        const firstCharCorrect = (firstWord.charAt(0) === startChar);
+        if (firstCharCorrect) correctCount++;
+        
+        // 中間のしりとりが繋がっているか？
+        for (let i = 0; i < gameData.length - 1; i++) {
+            const currentAns = gameData[i].answer;
+            const nextAns = gameData[i+1].answer;
+            
+            // 「ん」で終わっていないか、かつ文字が繋がっているか
+            const lastChar = currentAns.slice(-1);
+            const nextFirstChar = nextAns.charAt(0);
+            
+            if (lastChar === nextFirstChar && lastChar !== 'ん') {
+                correctCount++;
+            }
+        }
+        
+        // 最後の言葉がお題の終了文字と合っているか？
+        const lastWord = gameData[gameData.length - 1].answer;
+        const lastCharCorrect = (lastWord.slice(-1) === endChar);
+        if (lastCharCorrect) correctCount++;
+        
+        // チェックの総数は (1本目の頭) + (リレーの隙間の数: 長さ-1) + (最終本のケツ) = 長さ + 1
+        const maxScore = gameData.length + 1;
+        const successRate = Math.round((correctCount / maxScore) * 100);
+        
+        document.getElementById('stats-area').innerHTML = `
+            今回の目標: 『${startChar}』から始まって『${endChar}』で終わる<br>
+            <span style="font-size: 24px; color:#e74c3c;">しりとり正答率: ${successRate}%</span> (${maxScore}箇所中 ${correctCount}箇所成功!)
+        `;
+
+        // --- MVPの判定 (一番早く描き終えた人) ---
+        let fastestTurn = gameData[0];
+        gameData.forEach(data => {
+            if (data.timeSpent < fastestTurn.timeSpent) {
+                fastestTurn = data;
+            }
+        });
+        document.getElementById('mvp-area').innerHTML = `
+            🏆 今回の爆速作画MVP 🏆<br>
+            <span style="font-size: 22px;">${fastestTurn.player} さん！</span> (わずか ${fastestTurn.timeSpent} 秒で描き完了)
+        `;
+
+        // --- 詳細リレーリストの描写 ---
         const resultList = document.getElementById('result-list');
         resultList.innerHTML = '';
-
         gameData.forEach((data, index) => {
             const item = document.createElement('div');
             item.className = 'result-item';
+            
+            // 簡易的な個別判定マーク
+            let statusMark = "✅ OK";
+            if (index === 0 && data.answer.charAt(0) !== startChar) statusMark = "❌ スタート文字ミス";
+            if (index > 0) {
+                const prevAns = gameData[index-1].answer;
+                if (prevAns.slice(-1) !== data.answer.charAt(0)) statusMark = "❌ しりとり未成立";
+                if (prevAns.slice(-1) === 'ん') statusMark = "❌ 前の人が『ん』をつけた";
+            }
+            if (index === gameData.length - 1 && data.answer.slice(-1) !== endChar) statusMark += " ＆ ❌ ラスト文字ミス";
+
             item.innerHTML = `
-                <strong>${index + 1}. ${data.player} さんの絵</strong><br>
-                <span>答え: <strong>${data.answer}</strong></span>
+                <strong>【${index + 1}番手】 ${data.player} 氏</strong> <span style="margin-left:10px; font-size:12px; padding:2px 6px; border-radius:4px; background:#edf2f7;">${statusMark}</span><br>
+                <span>書いたワード: <strong style="color:#2b6cb0; font-size:18px;">${data.answer}</strong> (${data.timeSpent}秒で提出)</span>
                 <img class="result-img" src="${data.image}">
             `;
             resultList.appendChild(item);
         });
+    }
+
+    // 次のラウンドへ進む（プレイヤー名は維持）
+    function nextRound() {
+        currentIndex = 0;
+        gameData = [];
+        initRoundOdai();  // 新しいランダムお題をセット
+        showTurnScreen(); // 1人目から再スタート
     }
 </script>
 
