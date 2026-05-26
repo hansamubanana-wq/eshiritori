@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>グループで絵しりとり</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        h1 { color: #2c3e50; margin-top: 0; }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #2980b9; }
+        input[type="text"], input[type="number"] {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin: 5px;
+            width: 80%;
+        }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        
+        /* お絵描きエリア */
+        #canvas {
+            border: 2px dashed #7f8c8d;
+            border-radius: 8px;
+            background-color: #fff;
+            cursor: crosshair;
+            touch-action: none; /* タブレットでのスクロール防止 */
+        }
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 10px 0;
+        }
+        .hint-box {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .prev-image {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        .member-input { display: flex; align-items: center; justify-content: center; margin: 5px 0; }
+        .member-input label { width: 80px; text-align: right; margin-right: 10px; }
+        
+        /* 結果発表 */
+        .result-item {
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+            text-align: left;
+        }
+        .result-item:last-child { border-bottom: none; }
+        .result-img { max-width: 200px; display: block; margin-top: 5px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="screen-setup" class="screen active">
+        <h1>絵しりとりスタート！</h1>
+        <p>参加人数を入力してね：</p>
+        <input type="number" id="player-count" value="3" min="2" max="10" style="width: 60px; text-align: center;">
+        <button onclick="generatePlayerInputs()">名前を入力する</button>
+        <div id="name-inputs-container" style="margin-top: 20px;"></div>
+        <button id="start-game-btn" onclick="startGame()" style="display:none; background-color: #2ecc71;">ゲーム開始！</button>
+    </div>
+
+    <div id="screen-turn" class="screen">
+        <h2 id="turn-message">〇〇さんの番です</h2>
+        <p class="alert-text">前の人の答えは見えないようになっています。準備ができたら進んでね！</p>
+        <div id="hint-area" class="hint-box" style="display:none;">
+            <div>前の人が描いた絵：</div>
+            <img id="prev-canvas-img" class="prev-image" alt="前の人の絵">
+            <div style="margin-top: 10px; font-weight: bold;">文字数ヒント: <span id="word-length-hint" style="color:#e67e22; font-size: 22px;"></span></div>
+        </div>
+        <button onclick="startDrawing()">お絵描きを始める</button>
+    </div>
+
+    <div id="screen-draw" class="screen">
+        <h2 id="drawer-name">〇〇さん、描いて！</h2>
+        <div class="timer">残り時間: <span id="time-left">60</span>秒</div>
+        <canvas id="canvas" width="400" height="400"></canvas>
+        <div>
+            <button onclick="clearCanvas()" style="background-color: #95a5a6;">描き直す</button>
+            <button onclick="finishDrawing()" style="background-color: #2ecc71;">描けた！（正解入力へ）</button>
+        </div>
+    </div>
+
+    <div id="screen-answer" class="screen">
+        <h2>今描いたものの「正解」は？</h2>
+        <p>※次の人には文字数だけが伝わります</p>
+        <input type="text" id="correct-answer" placeholder="ひらがなやカタカナがおすすめ">
+        <button onclick="submitAnswer()">決定して次の人へ</button>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <h2>🎉 結果発表 🎉</h2>
+        <div id="result-list"></div>
+        <button onclick="location.reload()" style="background-color: #34495e;">もう一度遊ぶ</button>
+    </div>
+</div>
+
+<script>
+    let players = [];
+    let currentIndex = 0;
+    let gameData = []; // 各ターンの { player, image, answer } を保持
+    
+    let timerInterval;
+    let timeLeft = 60;
+    
+    // キャンバス用の変数
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+
+    // --- 1. 設定関連 ---
+    function generatePlayerInputs() {
+        const count = parseInt(document.getElementById('player-count').value);
+        const container = document.getElementById('name-inputs-container');
+        container.innerHTML = '';
+        
+        for (let i = 1; i <= count; i++) {
+            const div = document.createElement('div');
+            div.className = 'member-input';
+            div.innerHTML = `<label>プレイヤー${i}:</label><input type="text" class="player-name" value="プレイヤー${i}">`;
+            container.appendChild(div);
+        }
+        document.getElementById('start-game-btn').style.display = 'inline-block';
+    }
+
+    function startGame() {
+        const nameInputs = document.querySelectorAll('.player-name');
+        players = Array.from(nameInputs).map(input => input.value.trim() || '名無し');
+        currentIndex = 0;
+        gameData = [];
+        
+        showTurnScreen();
+    }
+
+    function changeScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    // --- 2. ターン開始画面 ---
+    function showTurnScreen() {
+        changeScreen('screen-turn');
+        document.getElementById('turn-message').innerText = `${players[currentIndex]} さんの番です`;
+        
+        const hintArea = document.getElementById('hint-area');
+        if (currentIndex > 0) {
+            hintArea.style.display = 'block';
+            // 前のプレイヤーのデータを取得
+            const prevTurn = gameData[currentIndex - 1];
+            document.getElementById('prev-canvas-img').src = prevTurn.image;
+            // 文字数を「◯」に変換してヒントにする
+            document.getElementById('word-length-hint').innerText = '〇'.repeat(prevTurn.answer.length) + ` (${prevTurn.answer.length}文字)`;
+        } else {
+            hintArea.style.display = 'none'; // 1人目はヒントなし
+        }
+    }
+
+    // --- 3. お絵描き画面 ---
+    function startDrawing() {
+        changeScreen('screen-draw');
+        document.getElementById('drawer-name').innerText = `${players[currentIndex]} さん、描いて！`;
+        clearCanvas();
+        setupCanvasEvents();
+        
+        // タイマーリセット (1分 = 60秒)
+        timeLeft = 60;
+        document.getElementById('time-left').innerText = timeLeft;
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('time-left').innerText = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                alert('時間切れです！正解入力に進みます。');
+                finishDrawing();
+            }
+        }, 1000);
+    }
+
+    // キャンバスの描画処理（マウス＆タッチ対応）
+    function setupCanvasEvents() {
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000';
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function start(e) {
+            isDrawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stop() { isDrawing = false; }
+
+        // マウスイベント
+        canvas.onmousedown = start;
+        canvas.onmousemove = draw;
+        canvas.onmouseup = stop;
+        canvas.onmouseleave = stop;
+
+        // タッチイベント（タブレット用）
+        canvas.ontouchstart = start;
+        canvas.ontouchmove = draw;
+        canvas.ontouchend = stop;
+    }
+
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function finishDrawing() {
+        clearInterval(timerInterval);
+        changeScreen('screen-answer');
+        document.getElementById('correct-answer').value = '';
+    }
+
+    // --- 4. 正解入力画面 ---
+    function submitAnswer() {
+        const answerInput = document.getElementById('correct-answer').value.trim();
+        if (!answerInput) {
+            alert('正解を入力してね！');
+            return;
+        }
+
+        // キャンバスの絵を画像データ(Base64)として保存
+        const imageData = canvas.toDataURL();
+        
+        // データを記録
+        gameData.push({
+            player: players[currentIndex],
+            image: imageData,
+            answer: answerInput
+        });
+
+        currentIndex++;
+        if (currentIndex < players.length) {
+            showTurnScreen(); // 次のプレイヤーへ
+        } else {
+            showResult(); // 全員終わったら結果発表
+        }
+    }
+
+    // --- 5. 結果発表画面 ---
+    function showResult() {
+        changeScreen('screen-result');
+        const resultList = document.getElementById('result-list');
+        resultList.innerHTML = '';
+
+        gameData.forEach((data, index) => {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+            item.innerHTML = `
+                <strong>${index + 1}. ${data.player} さんの絵</strong><br>
+                <span>答え: <strong>${data.answer}</strong></span>
+                <img class="result-img" src="${data.image}">
+            `;
+            resultList.appendChild(item);
+        });
+    }
+</script>
+
+</body>
+</html>
