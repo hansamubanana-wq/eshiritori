@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>スケッチブック風・連鎖絵しりとり</title>
+    <title>普通の絵しりとり</title>
     <style>
         /* 全体：スケッチブック風の温かみのある背景 */
         body {
             font-family: 'Hiragino Maru Gothic ProN', 'Comic Sans MS', sans-serif;
-            background-color: #e6dfd3; /* クラフト紙っぽい色 */
+            background-color: #e6dfd3;
             background-image: radial-gradient(#d3c9b8 10%, transparent 10%);
             background-size: 20px 20px;
             margin: 0;
@@ -19,6 +19,8 @@
             align-items: flex-start;
             min-height: 100vh;
             box-sizing: border-box;
+            user-select: none; /* 長押し時のテキスト選択を防止 */
+            -webkit-user-select: none;
         }
         .container {
             background-color: #fffdf9; /* 画用紙の白 */
@@ -26,7 +28,7 @@
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             width: 100%;
-            max-width: 1100px; /* 横画面用に広め */
+            max-width: 1100px;
             padding: 25px;
             box-sizing: border-box;
             position: relative;
@@ -61,7 +63,8 @@
             transition: all 0.1s;
         }
         button:active { transform: translateY(3px); border-bottom: 1px solid #d35400; }
-        input[type="text"], input[type="number"] {
+        
+        input[type="text"], input[type="number"], select {
             padding: 10px;
             font-size: 16px;
             border: 2px dashed #9c826b;
@@ -74,14 +77,14 @@
         .screen { display: none; }
         .screen.active { display: block; }
 
-        /* ★超重要：横スクロールのリレーロードマップ★ */
+        /* 横スクロールのリレーロードマップ */
         .roadmap-outer {
             background: #f4eee1;
             border: 2px solid #bdae96;
             border-radius: 12px;
             padding: 15px;
             margin-bottom: 20px;
-            overflow-x: auto; /* 横スクロールを許可 */
+            overflow-x: auto;
             white-space: nowrap;
             box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
         }
@@ -117,23 +120,25 @@
             box-sizing: border-box;
             vertical-align: middle;
             text-align: center;
+            cursor: pointer; /* 押せることを示す */
         }
         .roadmap-node.active-now {
             border-color: #e67e22;
             background-color: #fff9e6;
             box-shadow: 0 0 10px #e67e22;
+            cursor: default;
         }
         .roadmap-node.blank {
             background: #e8e3d7;
             border: 2px dashed #bdae96;
             color: #a49681;
+            cursor: default;
         }
         .node-pname { font-size: 11px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px;}
         .node-img { width: 80px; height: 80px; border: 1px solid #ddd; object-fit: contain; background: white; border-radius: 4px;}
-        .node-secret-img { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; background: #34495e; color: white; font-size: 12px; border-radius: 4px; font-weight: bold;}
         .node-chars { font-size: 11px; margin-top: 2px; color: #7f8c8d; }
 
-        /* メインプレイエリア（横並びレイアウト用） */
+        /* ゲームメインプレイエリア */
         .game-main-layout {
             display: flex;
             justify-content: space-around;
@@ -142,7 +147,7 @@
             gap: 20px;
         }
 
-        /* 画用紙風キャンバス */
+        /* キャンバス */
         #canvas {
             border: 4px solid #6d5843;
             border-radius: 4px;
@@ -170,6 +175,40 @@
         }
         .result-card img { width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; }
         .badge { background: #e67e22; color: white; padding: 4px 8px; border-radius: 12px; font-size: 14px; display: inline-block; margin-bottom: 10px;}
+
+        /* ★拡大画像ポップアップ用のスタイル★ */
+        #preview-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none; /* 下の要素のタッチ判定の邪魔をしない */
+        }
+        #preview-box {
+            background: #fffdf9;
+            padding: 15px;
+            border-radius: 12px;
+            border: 4px solid #6d5843;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        #preview-img {
+            max-width: 80vw;
+            max-height: 70vh;
+            object-fit: contain;
+            display: block;
+            border: 1px solid #ccc;
+            background: white;
+        }
+        #preview-name {
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 18px;
+            color: #4a3b32;
+        }
     </style>
 </head>
 <body>
@@ -177,15 +216,24 @@
 <div class="container">
     <div id="global-roadmap-box" style="display:none;">
         <div id="round-title" style="font-weight: bold; font-size: 16px; margin-bottom: 5px; text-align: left;"></div>
+        <p style="font-size: 12px; color:#7f8c8d; text-align: left; margin: 0 0 5px 0;">※前の人の絵を押している間は大きく見えるよ！</p>
         <div class="roadmap-outer">
-            <div id="roadmap-list" class="roadmap-container">
-                </div>
+            <div id="roadmap-list" class="roadmap-container"></div>
         </div>
     </div>
 
     <div id="screen-setup" class="screen active">
-        <h1>🎨 スケッチブック絵しりとりゲー (人数×4周)</h1>
-        <p>参加人数：<input type="number" id="player-count" value="3" min="2" max="10" style="width: 70px;"></p>
+        <h1>🎨 普通の絵しりとり (人数×4周)</h1>
+        <div style="margin-bottom: 15px;">
+            参加人数：<input type="number" id="player-count" value="3" min="2" max="10" style="width: 70px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            モード設定：
+            <select id="game-mode">
+                <option value="time-on">制限時間ありモード (1分)</option>
+                <option value="time-off">制限時間なしモード</option>
+            </select>
+        </div>
         <button onclick="generatePlayerInputs()">プレイヤー名を入力する</button>
         <div id="name-inputs-container" style="margin-top: 20px;"></div>
         <br>
@@ -194,7 +242,7 @@
 
     <div id="screen-turn" class="screen">
         <h2 id="turn-message" style="font-size: 26px; color: #d35400;">〇〇さんの番です</h2>
-        <p>前の人の答えが隠されました。心の準備ができたらボタンを押してね！</p>
+        <p>準備ができたらボタンを押して、お絵描きを始めてね！</p>
         <button onclick="startDrawing()" style="font-size: 20px; padding: 12px 40px;">お絵描きを始める</button>
     </div>
 
@@ -202,7 +250,7 @@
         <div class="game-main-layout">
             <div>
                 <h2 id="drawer-name">〇〇さん、描いて！</h2>
-                <div class="timer">残り時間: <span id="time-left">60</span>秒</div>
+                <div id="timer-box" class="timer">残り時間: <span id="time-left">60</span>秒</div>
                 <div>
                     <button onclick="clearCanvas()" style="background-color: #7f8c8d; border-color:#626d6e; margin-right:10px;">描き直す</button>
                     <button onclick="finishDrawing()" style="background-color: #27ae60; border-color: #1e8449;">描けた！(次へ)</button>
@@ -226,7 +274,7 @@
             <div id="mvp-area" style="background:#d4edda; border:2px solid #28a745; padding:15px; border-radius:8px; font-weight:bold; flex:1; min-width:250px;"></div>
         </div>
         
-        <h3 style="text-align: left; border-bottom: 2px dashed #9c826b; padding-bottom: 5px;">全員のリレー：</h3>
+        <h3 style="text-align: left; border-bottom: 2px dashed #9c826b; padding-bottom: 5px;">全員のリレー一覧：</h3>
         <div id="result-grid-list" class="result-grid"></div>
         
         <div style="margin-top: 30px;">
@@ -236,11 +284,19 @@
     </div>
 </div>
 
+<div id="preview-overlay">
+    <div id="preview-box">
+        <img id="preview-img" src="" alt="拡大画像">
+        <div id="preview-name"></div>
+    </div>
+</div>
+
 <script>
     let players = [];
-    let currentIndex = 0; // 全体の通算ターン (0 〜 人数×4 - 1)
+    let currentIndex = 0; 
     let totalTurns = 0;
-    let gameData = [];   // ターン毎の { player, image, answer, timeSpent }
+    let gameData = [];   
+    let isTimeMode = true; // 制限時間モードフラグ
     
     let timerInterval;
     let timeLeft = 60;
@@ -254,7 +310,7 @@
     const ctx = canvas.getContext('2d');
     let isDrawing = false;
 
-    // 1. 設定
+    // 1. 設定画面処理
     function generatePlayerInputs() {
         const count = parseInt(document.getElementById('player-count').value);
         const container = document.getElementById('name-inputs-container');
@@ -275,6 +331,9 @@
         currentIndex = 0;
         gameData = [];
         
+        // モード判定
+        isTimeMode = (document.getElementById('game-mode').value === 'time-on');
+        
         initRoundOdai();
         document.getElementById('global-roadmap-box').style.display = 'block';
         showTurnScreen();
@@ -292,48 +351,71 @@
         document.getElementById(screenId).classList.add('active');
     }
 
-    // ★ 視覚化ロードマップの描画処理 ★
-    function drawRoadmap(revealAll = false) {
+    // ★ 拡大表示用のイベントを設定する関数 ★
+    function attachPreviewEvents(element, index) {
+        const overlay = document.getElementById('preview-overlay');
+        const previewImg = document.getElementById('preview-img');
+        const previewName = document.getElementById('preview-name');
+
+        function showPreview(e) {
+            e.preventDefault();
+            const data = gameData[index];
+            previewImg.src = data.image;
+            previewName.innerText = `${index + 1}番手: ${data.player} の絵 (${data.answer.length}文字)`;
+            overlay.style.display = 'flex';
+        }
+
+        function hidePreview() {
+            overlay.style.display = 'none';
+        }
+
+        // マウス用
+        element.addEventListener('mousedown', showPreview);
+        window.addEventListener('mouseup', hidePreview);
+
+        // タブレット長押し・タッチ用
+        element.addEventListener('touchstart', showPreview, {passive: false});
+        window.addEventListener('touchend', hidePreview);
+        window.addEventListener('touchcancel', hidePreview);
+    }
+
+    // ★ ロードマップの描画処理（全履歴を普通に見せる） ★
+    function drawRoadmap() {
         const currentRound = Math.floor(currentIndex / players.length) + 1;
         document.getElementById('round-title').innerText = `【 ${currentRound} / 4 周目 】お題：『${startChar}』からはじまって『${endChar}』で終わる！`;
 
         const listEl = document.getElementById('roadmap-list');
         listEl.innerHTML = '';
 
-        // スタート「あ」
+        // スタート
         const startNode = document.createElement('div');
         startNode.className = 'roadmap-endpoint';
         startNode.innerText = startChar;
         listEl.appendChild(startNode);
 
-        // 人数 × 4周分の枠を作る
+        // 各ターンを生成
         for (let i = 0; i < totalTurns; i++) {
-            // 矢印
             const arrow = document.createElement('div');
             arrow.className = 'roadmap-arrow';
             arrow.innerText = '➔';
             listEl.appendChild(arrow);
 
-            // ノード
             const node = document.createElement('div');
             node.className = 'roadmap-node';
-            
             const pName = players[i % players.length];
 
             if (i < currentIndex) {
-                // すでに描き終わった枠
-                node.innerHTML = `<div class="node-pname">${pName}</div>`;
+                // 【変更点】過去に描いた絵はすべてそのまま表示
+                node.innerHTML = `
+                    <div class="node-pname">${pName}</div>
+                    <img class="node-img" src="${gameData[i].image}">
+                    <div class="node-chars">${gameData[i].answer.length}文字</div>
+                `;
+                // 拡大イベントを紐付け
+                attachPreviewEvents(node, i);
                 
-                // 次の人、または結果画面（revealAll）なら絵が見える
-                if (revealAll || i === currentIndex - 1) {
-                    node.innerHTML += `<img class="node-img" src="${gameData[i].image}">`;
-                } else {
-                    // それより前の絵は、プレイ中は隠してシークレット状態にする（前のリレーは見れるが、直前以外はモザイク的に隠すことでカンニング防止。もし全部見せたいならここを node.innerHTML += `<img class="node-img" src="${gameData[i].image}">`; にすればOK）
-                    node.innerHTML += `<div class="node-secret-img">済</div>`;
-                }
-                node.innerHTML += `<div class="node-chars">${gameData[i].answer.length}文字</div>`;
             } else if (i === currentIndex) {
-                // 現在まさに描いている人の枠
+                // 現在の手番
                 node.classList.add('active-now');
                 node.innerHTML = `
                     <div class="node-pname" style="color:#e67e22;">★ ${pName}</div>
@@ -341,7 +423,7 @@
                     <div class="node-chars">描画中</div>
                 `;
             } else {
-                // まだ書いていない空欄枠
+                // 未来の手番
                 node.classList.add('blank');
                 node.innerHTML = `
                     <div class="node-pname" style="color:#888;">${pName}</div>
@@ -352,7 +434,7 @@
             listEl.appendChild(node);
         }
 
-        // ゴール「い」
+        // ゴール
         const endArrow = document.createElement('div');
         endArrow.className = 'roadmap-arrow';
         endArrow.innerText = '➔';
@@ -364,7 +446,7 @@
         endNode.innerText = endChar;
         listEl.appendChild(endNode);
         
-        // 現在のプレイヤー枠まで自動スクロール
+        // 現在の枠まで自動スクロール
         setTimeout(() => {
             const activeNode = document.querySelector('.active-now');
             if (activeNode) activeNode.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -376,7 +458,7 @@
         changeScreen('screen-turn');
         const playerInRound = players[currentIndex % players.length];
         document.getElementById('turn-message').innerText = `${playerInRound} さんの番です`;
-        drawRoadmap(false); // 通常は直前の絵だけ見えるようにロードマップを描画
+        drawRoadmap();
     }
 
     // 3. お絵描き画面
@@ -387,29 +469,40 @@
         
         clearCanvas();
         setupCanvasEvents();
-        drawRoadmap(false);
+        drawRoadmap();
         
-        timeLeft = 60;
         timeSpent = 0;
-        document.getElementById('time-left').innerText = timeLeft;
-        
         clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            timeSpent++;
+
+        // 【変更点】制限時間モードの切り替え
+        if (isTimeMode) {
+            document.getElementById('timer-box').style.display = 'block';
+            timeLeft = 60;
             document.getElementById('time-left').innerText = timeLeft;
-            if (timeLeft <= 0) {
-                clearInterval(timerInterval);
-                alert('時間切れ！正解入力へ移ります。');
-                finishDrawing();
-            }
-        }, 1000);
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timeSpent++;
+                document.getElementById('time-left').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    alert('時間切れ！正解入力へ移ります。');
+                    finishDrawing();
+                }
+            }, 1000);
+        } else {
+            document.getElementById('timer-box').style.display = 'none';
+            // 時間なしでもMVP用に経過時間を計測
+            timerInterval = setInterval(() => {
+                timeSpent++;
+            }, 1000);
+        }
     }
 
     function setupCanvasEvents() {
         ctx.lineWidth = 4;
         ctx.lineCap = 'round';
-        ctx.strokeStyle = '#4a3b32'; /* スケッチブックに合う色鉛筆っぽい色 */
+        ctx.strokeStyle = '#4a3b32';
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
@@ -466,9 +559,9 @@
     // 5. 結果発表画面
     function showResult() {
         changeScreen('screen-result');
-        drawRoadmap(true); // 最後はすべての絵を一斉公開！
+        drawRoadmap();
 
-        // --- 正答率の判定 ---
+        // 正答率の判定
         let correctCount = 0;
         const maxScore = gameData.length + 1;
         
@@ -485,10 +578,10 @@
         document.getElementById('stats-area').innerHTML = `
             <div class="badge">しりとり結果</div><br>
             <span style="font-size: 24px; color:#d35400;">正答率: ${successRate}%</span><br>
-            (${maxScore}箇所中 ${correctCount}箇所で成立しました！)`
+            (${maxScore}箇所中 ${correctCount}箇所成功!)`
         ;
 
-        // --- MVPの判定 ---
+        // MVPの判定
         let fastestTurn = gameData[0];
         gameData.forEach(data => {
             if (data.timeSpent < fastestTurn.timeSpent) fastestTurn = data;
@@ -496,10 +589,10 @@
         document.getElementById('mvp-area').innerHTML = `
             <div class="badge" style="background:#27ae60;">最速MVP</div><br>
             <span style="font-size: 20px; color:#27ae60;">${fastestTurn.player} さん</span><br>
-            (作画タイム: わずか ${fastestTurn.timeSpent} 秒！)`
+            (作画タイム: ${fastestTurn.timeSpent} 秒！)`
         ;
 
-        // --- 下部の一覧カード生成 ---
+        // 下部の一覧表示
         const gridList = document.getElementById('result-grid-list');
         gridList.innerHTML = '';
         gameData.forEach((data, index) => {
