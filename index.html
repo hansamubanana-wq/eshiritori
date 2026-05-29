@@ -19,7 +19,7 @@
             align-items: flex-start;
             min-height: 100vh;
             box-sizing: border-box;
-            user-select: none; /* 長押し時のテキスト選択を防止 */
+            user-select: none;
             -webkit-user-select: none;
         }
         .container {
@@ -120,7 +120,7 @@
             box-sizing: border-box;
             vertical-align: middle;
             text-align: center;
-            cursor: pointer; /* 押せることを示す */
+            cursor: pointer;
         }
         .roadmap-node.active-now {
             border-color: #e67e22;
@@ -176,7 +176,7 @@
         .result-card img { width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; }
         .badge { background: #e67e22; color: white; padding: 4px 8px; border-radius: 12px; font-size: 14px; display: inline-block; margin-bottom: 10px;}
 
-        /* ★拡大画像ポップアップ用のスタイル★ */
+        /* 拡大画像ポップアップ用のスタイル */
         #preview-overlay {
             display: none;
             position: fixed;
@@ -185,7 +185,7 @@
             z-index: 9999;
             justify-content: center;
             align-items: center;
-            pointer-events: none; /* 下の要素のタッチ判定の邪魔をしない */
+            pointer-events: none;
         }
         #preview-box {
             background: #fffdf9;
@@ -262,8 +262,8 @@
 
     <div id="screen-answer" class="screen">
         <h2>今描いたものの「正解ワード」は？</h2>
-        <p style="font-size: 14px; color:#7f8c8d;">※ひらがな、またはカタカナで入力してね</p>
-        <input type="text" id="correct-answer" placeholder="例: りんご" style="font-size: 20px; width: 60%; max-width: 300px;"><br><br>
+        <p style="font-size: 14px; color:#7f8c8d;">※ひらがな、カタカナのどちらでも大丈夫です！</p>
+        <input type="text" id="correct-answer" placeholder="例: りんご / ゴリラ" style="font-size: 20px; width: 60%; max-width: 300px;"><br><br>
         <button onclick="submitAnswer()" style="background-color: #2980b9; border-color:#21618c;">確定して次の人へ</button>
     </div>
 
@@ -296,7 +296,7 @@
     let currentIndex = 0; 
     let totalTurns = 0;
     let gameData = [];   
-    let isTimeMode = true; // 制限時間モードフラグ
+    let isTimeMode = true; 
     
     let timerInterval;
     let timeLeft = 60;
@@ -304,13 +304,20 @@
     
     let startChar = "";
     let endChar = "";
-    const hiragana = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ";
+    const hiraganaList = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ";
 
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     let isDrawing = false;
 
-    // 1. 設定画面処理
+    // カタカナをひらがなに変換する便利関数
+    function kataToHira(str) {
+        return str.replace(/[\u30a1-\u30f6]/g, function(match) {
+            const chr = match.charCodeAt(0) - 0x60;
+            return String.fromCharCode(chr);
+        });
+    }
+
     function generatePlayerInputs() {
         const count = parseInt(document.getElementById('player-count').value);
         const container = document.getElementById('name-inputs-container');
@@ -331,7 +338,6 @@
         currentIndex = 0;
         gameData = [];
         
-        // モード判定
         isTimeMode = (document.getElementById('game-mode').value === 'time-on');
         
         initRoundOdai();
@@ -340,9 +346,9 @@
     }
 
     function initRoundOdai() {
-        startChar = hiragana[Math.floor(Math.random() * hiragana.length)];
+        startChar = hiraganaList[Math.floor(Math.random() * hiraganaList.length)];
         do {
-            endChar = hiragana[Math.floor(Math.random() * hiragana.length)];
+            endChar = hiraganaList[Math.floor(Math.random() * hiraganaList.length)];
         } while (startChar === endChar);
     }
 
@@ -351,7 +357,6 @@
         document.getElementById(screenId).classList.add('active');
     }
 
-    // ★ 拡大表示用のイベントを設定する関数 ★
     function attachPreviewEvents(element, index) {
         const overlay = document.getElementById('preview-overlay');
         const previewImg = document.getElementById('preview-img');
@@ -369,17 +374,14 @@
             overlay.style.display = 'none';
         }
 
-        // マウス用
         element.addEventListener('mousedown', showPreview);
         window.addEventListener('mouseup', hidePreview);
 
-        // タブレット長押し・タッチ用
         element.addEventListener('touchstart', showPreview, {passive: false});
         window.addEventListener('touchend', hidePreview);
         window.addEventListener('touchcancel', hidePreview);
     }
 
-    // ★ ロードマップの描画処理（全履歴を普通に見せる） ★
     function drawRoadmap() {
         const currentRound = Math.floor(currentIndex / players.length) + 1;
         document.getElementById('round-title').innerText = `【 ${currentRound} / 4 周目 】お題：『${startChar}』からはじまって『${endChar}』で終わる！`;
@@ -387,13 +389,11 @@
         const listEl = document.getElementById('roadmap-list');
         listEl.innerHTML = '';
 
-        // スタート
         const startNode = document.createElement('div');
         startNode.className = 'roadmap-endpoint';
         startNode.innerText = startChar;
         listEl.appendChild(startNode);
 
-        // 各ターンを生成
         for (let i = 0; i < totalTurns; i++) {
             const arrow = document.createElement('div');
             arrow.className = 'roadmap-arrow';
@@ -405,17 +405,14 @@
             const pName = players[i % players.length];
 
             if (i < currentIndex) {
-                // 【変更点】過去に描いた絵はすべてそのまま表示
                 node.innerHTML = `
                     <div class="node-pname">${pName}</div>
                     <img class="node-img" src="${gameData[i].image}">
                     <div class="node-chars">${gameData[i].answer.length}文字</div>
                 `;
-                // 拡大イベントを紐付け
                 attachPreviewEvents(node, i);
                 
             } else if (i === currentIndex) {
-                // 現在の手番
                 node.classList.add('active-now');
                 node.innerHTML = `
                     <div class="node-pname" style="color:#e67e22;">★ ${pName}</div>
@@ -423,7 +420,6 @@
                     <div class="node-chars">描画中</div>
                 `;
             } else {
-                // 未来の手番
                 node.classList.add('blank');
                 node.innerHTML = `
                     <div class="node-pname" style="color:#888;">${pName}</div>
@@ -434,7 +430,6 @@
             listEl.appendChild(node);
         }
 
-        // ゴール
         const endArrow = document.createElement('div');
         endArrow.className = 'roadmap-arrow';
         endArrow.innerText = '➔';
@@ -446,14 +441,12 @@
         endNode.innerText = endChar;
         listEl.appendChild(endNode);
         
-        // 現在の枠まで自動スクロール
         setTimeout(() => {
             const activeNode = document.querySelector('.active-now');
             if (activeNode) activeNode.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }, 100);
     }
 
-    // 2. 交代画面
     function showTurnScreen() {
         changeScreen('screen-turn');
         const playerInRound = players[currentIndex % players.length];
@@ -461,7 +454,6 @@
         drawRoadmap();
     }
 
-    // 3. お絵描き画面
     function startDrawing() {
         changeScreen('screen-draw');
         const playerInRound = players[currentIndex % players.length];
@@ -474,7 +466,6 @@
         timeSpent = 0;
         clearInterval(timerInterval);
 
-        // 【変更点】制限時間モードの切り替え
         if (isTimeMode) {
             document.getElementById('timer-box').style.display = 'block';
             timeLeft = 60;
@@ -492,7 +483,6 @@
             }, 1000);
         } else {
             document.getElementById('timer-box').style.display = 'none';
-            // 時間なしでもMVP用に経過時間を計測
             timerInterval = setInterval(() => {
                 timeSpent++;
             }, 1000);
@@ -530,7 +520,6 @@
         document.getElementById('correct-answer').value = '';
     }
 
-    // 4. 正解入力画面
     function submitAnswer() {
         const answerInput = document.getElementById('correct-answer').value.trim();
         if (!answerInput) {
@@ -556,22 +545,44 @@
         }
     }
 
-    // 5. 結果発表画面
     function showResult() {
         changeScreen('screen-result');
         drawRoadmap();
 
-        // 正答率の判定
+        // 正答率の判定（カタカナをひらがなに統一して比較）
         let correctCount = 0;
         const maxScore = gameData.length + 1;
         
-        if (gameData[0].answer.charAt(0) === startChar) correctCount++;
+        // スタート判定
+        const firstHira = kataToHira(gameData[0].answer);
+        if (firstHira.length > 0 && firstHira.charAt(0) === startChar) correctCount++;
+        
+        // 中間のしりとり判定
         for (let i = 0; i < gameData.length - 1; i++) {
-            const lastChar = gameData[i].answer.slice(-1);
-            const nextFirstChar = gameData[i+1].answer.charAt(0);
-            if (lastChar === nextFirstChar && lastChar !== 'ん') correctCount++;
+            const currentHira = kataToHira(gameData[i].answer);
+            const nextHira = kataToHira(gameData[i+1].answer);
+            
+            if (currentHira.length > 0 && nextHira.length > 0) {
+                // 長音符（ー）で終わる場合の処理
+                let lastChar = currentHira.slice(-1);
+                if (lastChar === 'ー' && currentHira.length > 1) {
+                    lastChar = currentHira.slice(-2, -1);
+                }
+                
+                const nextFirstChar = nextHira.charAt(0);
+                if (lastChar === nextFirstChar && lastChar !== 'ん') correctCount++;
+            }
         }
-        if (gameData[gameData.length - 1].answer.slice(-1) === endChar) correctCount++;
+        
+        // ゴール判定
+        const lastHira = kataToHira(gameData[gameData.length - 1].answer);
+        if (lastHira.length > 0) {
+            let finalChar = lastHira.slice(-1);
+            if (finalChar === 'ー' && lastHira.length > 1) {
+                finalChar = lastHira.slice(-2, -1);
+            }
+            if (finalChar === endChar) correctCount++;
+        }
         
         const successRate = Math.round((correctCount / maxScore) * 100);
         
@@ -581,7 +592,6 @@
             (${maxScore}箇所中 ${correctCount}箇所成功!)`
         ;
 
-        // MVPの判定
         let fastestTurn = gameData[0];
         gameData.forEach(data => {
             if (data.timeSpent < fastestTurn.timeSpent) fastestTurn = data;
@@ -592,7 +602,6 @@
             (作画タイム: ${fastestTurn.timeSpent} 秒！)`
         ;
 
-        // 下部の一覧表示
         const gridList = document.getElementById('result-grid-list');
         gridList.innerHTML = '';
         gameData.forEach((data, index) => {
@@ -600,9 +609,20 @@
             card.className = 'result-card';
             
             let mark = "✅ 成功";
-            if (index === 0 && data.answer.charAt(0) !== startChar) mark = "❌ スタート失敗";
-            if (index > 0 && gameData[index-1].answer.slice(-1) !== data.answer.charAt(0)) mark = "❌ 不成立";
-            if (index === gameData.length - 1 && data.answer.slice(-1) !== endChar) mark += " & ❌ ゴール失敗";
+            const currentHira = kataToHira(data.answer);
+            
+            if (index === 0 && currentHira.charAt(0) !== startChar) mark = "❌ スタート失敗";
+            if (index > 0) {
+                const prevHira = kataToHira(gameData[index-1].answer);
+                let prevLast = prevHira.slice(-1);
+                if (prevLast === 'ー' && prevHira.length > 1) prevLast = prevHira.slice(-2, -1);
+                
+                if (prevLast !== currentHira.charAt(0)) mark = "❌ 不成立";
+            }
+            
+            let finalChar = currentHira.slice(-1);
+            if (finalChar === 'ー' && currentHira.length > 1) finalChar = currentHira.slice(-2, -1);
+            if (index === gameData.length - 1 && finalChar !== endChar) mark += " & ❌ ゴール失敗";
 
             card.innerHTML = `
                 <div style="font-size: 12px; color: #7f8c8d;">${index + 1}番手: ${data.player}</div>
