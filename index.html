@@ -138,7 +138,7 @@
         .node-img { width: 80px; height: 80px; border: 1px solid #ddd; object-fit: contain; background: white; border-radius: 4px;}
         .node-chars { font-size: 11px; margin-top: 2px; color: #7f8c8d; }
 
-        /* ゲームメインプレイエリア */
+        /* ゲームメインプレイエリア（パレット配置用） */
         .game-main-layout {
             display: flex;
             justify-content: space-around;
@@ -147,7 +147,13 @@
             gap: 20px;
         }
 
-        /* キャンバス */
+        /* 画用紙風キャンバスエリア */
+        .canvas-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
         #canvas {
             border: 4px solid #6d5843;
             border-radius: 4px;
@@ -156,7 +162,40 @@
             cursor: crosshair;
             touch-action: none;
         }
-        .timer { font-size: 26px; font-weight: bold; color: #d35400; margin-bottom: 10px; }
+
+        /* ★カラーパレットとツールの装飾★ */
+        .palette-container {
+            display: flex;
+            gap: 8px;
+            background: #f4eee1;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 2px solid #9c826b;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .color-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        .color-dot:active, .color-dot.selected {
+            transform: scale(1.2);
+            border-color: #4a3b32;
+        }
+        .tool-select {
+            padding: 4px 8px;
+            font-size: 14px;
+            border: 2px solid #9c826b;
+            border-radius: 8px;
+            background: white;
+            font-weight: bold;
+            color: #4a3b32;
+        }
 
         /* 結果発表 */
         .result-grid {
@@ -251,12 +290,22 @@
             <div>
                 <h2 id="drawer-name">〇〇さん、描いて！</h2>
                 <div id="timer-box" class="timer">残り時間: <span id="time-left">60</span>秒</div>
-                <div>
-                    <button onclick="clearCanvas()" style="background-color: #7f8c8d; border-color:#626d6e; margin-right:10px;">描き直す</button>
+                <div style="margin-bottom: 15px;">
+                    <button onclick="clearCanvas()" style="background-color: #7f8c8d; border-color:#626d6e; margin-right:10px;">全部消す</button>
                     <button onclick="finishDrawing()" style="background-color: #27ae60; border-color: #1e8449;">描けた！(次へ)</button>
                 </div>
             </div>
-            <canvas id="canvas" width="380" height="380"></canvas>
+            
+            <div class="canvas-area">
+                <div class="palette-container">
+                    <div class="color-dot selected" style="background-color: #4a3b32;" onclick="selectColor('#4a3b32', this)"></div> <div class="color-dot" style="background-color: #c0392b;" onclick="selectColor('#c0392b', this)"></div> <div class="color-dot" style="background-color: #e67e22;" onclick="selectColor('#e67e22', this)"></div> <div class="color-dot" style="background-color: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div> <div class="color-dot" style="background-color: #27ae60;" onclick="selectColor('#27ae60', this)"></div> <div class="color-dot" style="background-color: #2980b9;" onclick="selectColor('#2980b9', this)"></div> <div class="color-dot" style="background-color: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div> <div class="color-dot" style="background-color: #ffffff; border: 2px solid #ccc;" onclick="selectColor('#ffffff', this)"></div> <select id="line-width-select" class="tool-select" onchange="selectWidth(this.value)">
+                        <option value="4">ふつうの太さ</option>
+                        <option value="10">ふとい線</option>
+                    </select>
+                </div>
+                
+                <canvas id="canvas" width="380" height="380"></canvas>
+            </div>
         </div>
     </div>
 
@@ -309,8 +358,11 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     let isDrawing = false;
+    
+    // ★線の状態を管理する変数★
+    let currentColor = '#4a3b32';
+    let currentLineWidth = 4;
 
-    // カタカナをひらがなに変換する便利関数
     function kataToHira(str) {
         return str.replace(/[\u30a1-\u30f6]/g, function(match) {
             const chr = match.charCodeAt(0) - 0x60;
@@ -454,11 +506,29 @@
         drawRoadmap();
     }
 
+    // ★カラーと太さの選択関数★
+    function selectColor(color, element) {
+        currentColor = color;
+        document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
+        element.classList.add('selected');
+    }
+
+    function selectWidth(width) {
+        currentLineWidth = parseInt(width);
+    }
+
     function startDrawing() {
         changeScreen('screen-draw');
         const playerInRound = players[currentIndex % players.length];
         document.getElementById('drawer-name').innerText = `${playerInRound} さん、キャンバスに描いて！`;
         
+        // パレットと線の初期状態リセット（焦げ茶・通常太さに戻す）
+        currentColor = '#4a3b32';
+        currentLineWidth = 4;
+        document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
+        document.querySelector('.color-dot').classList.add('selected');
+        document.getElementById('line-width-select').value = "4";
+
         clearCanvas();
         setupCanvasEvents();
         drawRoadmap();
@@ -490,18 +560,31 @@
     }
 
     function setupCanvasEvents() {
-        ctx.lineWidth = 4;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = '#4a3b32';
-
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
-        function start(e) { isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); }
-        function draw(e) { if (!isDrawing) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
+        function start(e) { 
+            isDrawing = true; 
+            const pos = getPos(e); 
+            ctx.beginPath(); 
+            ctx.moveTo(pos.x, pos.y); 
+        }
+        function draw(e) { 
+            if (!isDrawing) return; 
+            e.preventDefault(); 
+            const pos = getPos(e); 
+            
+            // 描画する瞬間に、選択されている色と太さをその都度適用する
+            ctx.lineWidth = currentLineWidth;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = currentColor;
+            
+            ctx.lineTo(pos.x, pos.y); 
+            ctx.stroke(); 
+        }
         function stop() { isDrawing = false; }
 
         canvas.onmousedown = start; canvas.onmousemove = draw; canvas.onmouseup = stop; canvas.onmouseleave = stop;
@@ -549,32 +632,26 @@
         changeScreen('screen-result');
         drawRoadmap();
 
-        // 正答率の判定（カタカナをひらがなに統一して比較）
         let correctCount = 0;
         const maxScore = gameData.length + 1;
         
-        // スタート判定
         const firstHira = kataToHira(gameData[0].answer);
         if (firstHira.length > 0 && firstHira.charAt(0) === startChar) correctCount++;
         
-        // 中間のしりとり判定
         for (let i = 0; i < gameData.length - 1; i++) {
             const currentHira = kataToHira(gameData[i].answer);
             const nextHira = kataToHira(gameData[i+1].answer);
             
             if (currentHira.length > 0 && nextHira.length > 0) {
-                // 長音符（ー）で終わる場合の処理
                 let lastChar = currentHira.slice(-1);
                 if (lastChar === 'ー' && currentHira.length > 1) {
                     lastChar = currentHira.slice(-2, -1);
                 }
-                
                 const nextFirstChar = nextHira.charAt(0);
                 if (lastChar === nextFirstChar && lastChar !== 'ん') correctCount++;
             }
         }
         
-        // ゴール判定
         const lastHira = kataToHira(gameData[gameData.length - 1].answer);
         if (lastHira.length > 0) {
             let finalChar = lastHira.slice(-1);
