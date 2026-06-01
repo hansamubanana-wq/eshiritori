@@ -138,7 +138,7 @@
         .node-img { width: 80px; height: 80px; border: 1px solid #ddd; object-fit: contain; background: white; border-radius: 4px;}
         .node-chars { font-size: 11px; margin-top: 2px; color: #7f8c8d; }
 
-        /* ゲームメインプレイエリア（パレット配置用） */
+        /* ゲームメインプレイエリア */
         .game-main-layout {
             display: flex;
             justify-content: space-around;
@@ -163,7 +163,7 @@
             touch-action: none;
         }
 
-        /* ★カラーパレットとツールの装飾★ */
+        /* カラーパレットとツールの装飾 */
         .palette-container {
             display: flex;
             gap: 8px;
@@ -173,6 +173,7 @@
             border: 2px solid #9c826b;
             flex-wrap: wrap;
             justify-content: center;
+            align-items: center;
         }
         .color-dot {
             width: 28px;
@@ -187,6 +188,28 @@
             transform: scale(1.2);
             border-color: #4a3b32;
         }
+        
+        /* ★消しゴムボタン専用のスタイル★ */
+        .eraser-btn {
+            background-color: #fff;
+            color: #4a3b32;
+            border: 2px solid #9c826b;
+            border-bottom: 3px solid #7d6550;
+            padding: 4px 10px;
+            font-size: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .eraser-btn.selected {
+            background-color: #ffeaa7;
+            border-color: #e67e22;
+            transform: scale(1.05);
+        }
+
         .tool-select {
             padding: 4px 8px;
             font-size: 14px;
@@ -298,9 +321,15 @@
             
             <div class="canvas-area">
                 <div class="palette-container">
-                    <div class="color-dot selected" style="background-color: #4a3b32;" onclick="selectColor('#4a3b32', this)"></div> <div class="color-dot" style="background-color: #c0392b;" onclick="selectColor('#c0392b', this)"></div> <div class="color-dot" style="background-color: #e67e22;" onclick="selectColor('#e67e22', this)"></div> <div class="color-dot" style="background-color: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div> <div class="color-dot" style="background-color: #27ae60;" onclick="selectColor('#27ae60', this)"></div> <div class="color-dot" style="background-color: #2980b9;" onclick="selectColor('#2980b9', this)"></div> <div class="color-dot" style="background-color: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div> <div class="color-dot" style="background-color: #ffffff; border: 2px solid #ccc;" onclick="selectColor('#ffffff', this)"></div> <select id="line-width-select" class="tool-select" onchange="selectWidth(this.value)">
+                    <div class="color-dot selected" style="background-color: #4a3b32;" onclick="selectColor('#4a3b32', this)"></div> <div class="color-dot" style="background-color: #c0392b;" onclick="selectColor('#c0392b', this)"></div> <div class="color-dot" style="background-color: #e67e22;" onclick="selectColor('#e67e22', this)"></div> <div class="color-dot" style="background-color: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div> <div class="color-dot" style="background-color: #27ae60;" onclick="selectColor('#27ae60', this)"></div> <div class="color-dot" style="background-color: #2980b9;" onclick="selectColor('#2980b9', this)"></div> <div class="color-dot" style="background-color: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div> <button id="eraser-btn" class="eraser-btn" onclick="selectEraser()">
+                        <span>🧹</span>消しゴム
+                    </button>
+                    
+                    <select id="line-width-select" class="tool-select" onchange="selectWidth(this.value)">
                         <option value="4">ふつうの太さ</option>
                         <option value="10">ふとい線</option>
+                        <option value="20">かなり太い（消しゴム用）</option>
+                        <option value="40">超ぶっとい（消しゴム用）</option>
                     </select>
                 </div>
                 
@@ -359,9 +388,9 @@
     const ctx = canvas.getContext('2d');
     let isDrawing = false;
     
-    // ★線の状態を管理する変数★
     let currentColor = '#4a3b32';
     let currentLineWidth = 4;
+    let isEraserMode = false; // 消しゴムモードかどうかのフラグ
 
     function kataToHira(str) {
         return str.replace(/[\u30a1-\u30f6]/g, function(match) {
@@ -506,11 +535,24 @@
         drawRoadmap();
     }
 
-    // ★カラーと太さの選択関数★
+    // カラーの選択関数
     function selectColor(color, element) {
+        isEraserMode = false;
         currentColor = color;
+        document.getElementById('eraser-btn').classList.remove('selected');
         document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
         element.classList.add('selected');
+    }
+
+    // ★消しゴムモードの選択関数★
+    function selectEraser() {
+        isEraserMode = true;
+        document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
+        document.getElementById('eraser-btn').classList.add('selected');
+        
+        // 消しゴムが選ばれたら、使いやすいように自動的に太さを20pxに変更する
+        currentLineWidth = 20;
+        document.getElementById('line-width-select').value = "20";
     }
 
     function selectWidth(width) {
@@ -522,9 +564,11 @@
         const playerInRound = players[currentIndex % players.length];
         document.getElementById('drawer-name').innerText = `${playerInRound} さん、キャンバスに描いて！`;
         
-        // パレットと線の初期状態リセット（焦げ茶・通常太さに戻す）
+        // 初期状態リセット（焦げ茶・通常太さ・ペンモード）
+        isEraserMode = false;
         currentColor = '#4a3b32';
         currentLineWidth = 4;
+        document.getElementById('eraser-btn').classList.remove('selected');
         document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
         document.querySelector('.color-dot').classList.add('selected');
         document.getElementById('line-width-select').value = "4";
@@ -577,10 +621,11 @@
             e.preventDefault(); 
             const pos = getPos(e); 
             
-            // 描画する瞬間に、選択されている色と太さをその都度適用する
             ctx.lineWidth = currentLineWidth;
             ctx.lineCap = 'round';
-            ctx.strokeStyle = currentColor;
+            
+            // ★消しゴムモードなら背景色（白）、ペンモードなら選択色を適用★
+            ctx.strokeStyle = isEraserMode ? '#ffffff' : currentColor;
             
             ctx.lineTo(pos.x, pos.y); 
             ctx.stroke(); 
