@@ -23,7 +23,7 @@
             -webkit-user-select: none;
         }
         .container {
-            background-color: #fffdf9; /* 画用紙の白 */
+            background-color: #fffdf9;
             border: 4px solid #6d5843;
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
@@ -33,7 +33,6 @@
             box-sizing: border-box;
             position: relative;
         }
-        /* スケッチブックのリング風の装飾 */
         .container::before {
             content: "◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯";
             position: absolute;
@@ -77,7 +76,7 @@
         .screen { display: none; }
         .screen.active { display: block; }
 
-        /* 横スクロールのリレーロードマップ */
+        /* ロードマップ */
         .roadmap-outer {
             background: #f4eee1;
             border: 2px solid #bdae96;
@@ -86,7 +85,6 @@
             margin-bottom: 20px;
             overflow-x: auto;
             white-space: nowrap;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
         }
         .roadmap-container {
             display: inline-flex;
@@ -103,13 +101,8 @@
             line-height: 60px;
             border-radius: 50%;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .roadmap-arrow {
-            font-size: 24px;
-            color: #bdae96;
-            font-weight: bold;
-        }
+        .roadmap-arrow { font-size: 24px; color: #bdae96; font-weight: bold; }
         .roadmap-node {
             display: inline-block;
             width: 100px;
@@ -138,7 +131,6 @@
         .node-img { width: 80px; height: 80px; border: 1px solid #ddd; object-fit: contain; background: white; border-radius: 4px;}
         .node-chars { font-size: 11px; margin-top: 2px; color: #7f8c8d; }
 
-        /* ゲームメインプレイエリア */
         .game-main-layout {
             display: flex;
             justify-content: space-around;
@@ -147,7 +139,6 @@
             gap: 20px;
         }
 
-        /* 画用紙風キャンバスエリア */
         .canvas-area {
             display: flex;
             flex-direction: column;
@@ -163,7 +154,6 @@
             touch-action: none;
         }
 
-        /* カラーパレットとツールの装飾 */
         .palette-container {
             display: flex;
             gap: 8px;
@@ -189,89 +179,477 @@
             border-color: #4a3b32;
         }
         
-        /* ★消しゴムボタン専用のスタイル★ */
         .eraser-btn {
-            background-color: #fff;
-            color: #4a3b32;
-            border: 2px solid #9c826b;
-            border-bottom: 3px solid #7d6550;
-            padding: 4px 10px;
-            font-size: 12px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 3px;
+            background-color: #fff; color: #4a3b32; border: 2px solid #9c826b;
+            border-bottom: 3px solid #7d6550; padding: 4px 10px; font-size: 12px;
+            border-radius: 12px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 3px;
         }
-        .eraser-btn.selected {
-            background-color: #ffeaa7;
-            border-color: #e67e22;
-            transform: scale(1.05);
-        }
+        .eraser-btn.selected { background-color: #ffeaa7; border-color: #e67e22; transform: scale(1.05); }
+        .tool-select { padding: 4px 8px; font-size: 14px; border: 2px solid #9c826b; border-radius: 8px; background: white; font-weight: bold; color: #4a3b32; }
 
-        .tool-select {
-            padding: 4px 8px;
-            font-size: 14px;
-            border: 2px solid #9c826b;
-            border-radius: 8px;
-            background: white;
-            font-weight: bold;
-            color: #4a3b32;
-        }
-
-        /* 結果発表 */
-        .result-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 15px;
-            text-align: left;
-            margin-top: 20px;
-        }
-        .result-card {
-            background: white;
-            border: 2px solid #6d5843;
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; text-align: left; margin-top: 20px; }
+        .result-card { background: white; border: 2px solid #6d5843; border-radius: 8px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .result-card img { width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; }
         .badge { background: #e67e22; color: white; padding: 4px 8px; border-radius: 12px; font-size: 14px; display: inline-block; margin-bottom: 10px;}
 
-        /* 拡大画像ポップアップ用のスタイル */
         #preview-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: rgba(0,0,0,0.6);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            pointer-events: none;
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;
         }
-        #preview-box {
-            background: #fffdf9;
-            padding: 15px;
-            border-radius: 12px;
-            border: 4px solid #6d5843;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        #preview-img {
-            max-width: 80vw;
-            max-height: 70vh;
-            object-fit: contain;
-            display: block;
-            border: 1px solid #ccc;
-            background: white;
-        }
-        #preview-name {
-            margin-top: 10px;
-            font-weight: bold;
-            font-size: 18px;
-            color: #4a3b32;
-        }
+        #preview-box { background: #fffdf9; padding: 15px; border-radius: 12px; border: 4px solid #6d5843; text-align: center; }
+        #preview-img { max-width: 80vw; max-height: 70vh; object-fit: contain; display: block; border: 1px solid #ccc; background: white; }
+        #preview-name { margin-top: 10px; font-weight: bold; font-size: 18px; color: #4a3b32; }
+        
+        .lobby-list { text-align: left; background: #f4eee1; padding: 15px; border-radius: 8px; border: 2px solid #9c826b; margin: 15px auto; max-width: 300px; }
     </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // 💡 君の提供してくれたFirebase接続情報に完全書き換え済み！
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1JE1-7hPGNeFCQn3egNwmgmViy79UYHE",
+            authDomain: "eshiritori-64c6c.firebaseapp.com",
+            databaseURL: "https://eshiritori-64c6c-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "eshiritori-64c6c",
+            storageBucket: "eshiritori-64c6c.firebasestorage.app",
+            messagingSenderId: "549200845335",
+            appId: "1:549200845335:web:2d9dc77d1a83c9548c5a52"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let roomId = "";
+        let myPlayerName = "";
+        let myPlayerId = "";
+        let isHost = false;
+        let roomState = null;
+        let timerInterval;
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentColor = '#4a3b32';
+        let currentLineWidth = 4;
+        let isEraserMode = false;
+
+        function changeScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        window.connectLobby = function() {
+            myPlayerName = document.getElementById('user-name').value.trim();
+            roomId = document.getElementById('room-id').value.trim();
+            if(!myPlayerName || !roomId) {
+                alert("なまえ と パスワード をいれてね！");
+                return;
+            }
+            myPlayerId = "p_" + Math.random().toString(36).substring(2, 10);
+            
+            const roomRef = ref(db, 'rooms/' + roomId);
+            get(roomRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    isHost = false;
+                    joinRoom();
+                } else {
+                    isHost = true;
+                    createRoom();
+                }
+            });
+        }
+
+        function createRoom() {
+            const roomRef = ref(db, 'rooms/' + roomId);
+            const startChar = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ"[Math.floor(Math.random() * 42)];
+            let endChar = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ"[Math.floor(Math.random() * 42)];
+            while(startChar === endChar) {
+                endChar = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ"[Math.floor(Math.random() * 42)];
+            }
+
+            const initialData = {
+                status: "waiting",
+                currentIndex: 0,
+                startChar: startChar,
+                endChar: endChar,
+                playersOrder: [myPlayerId],
+                players: {
+                    [myPlayerId]: { name: myPlayerName, isHost: true }
+                },
+                gameData: []
+            };
+
+            set(roomRef, initialData).then(() => {
+                listenToRoom();
+                changeScreen('screen-lobby');
+            });
+        }
+
+        function joinRoom() {
+            const playersRef = ref(db, `rooms/${roomId}/players/${myPlayerId}`);
+            set(playersRef, { name: myPlayerName, isHost: false }).then(() => {
+                const roomRef = ref(db, 'rooms/' + roomId);
+                get(roomRef).then((snapshot) => {
+                    let data = snapshot.val();
+                    if(data.status !== "waiting") {
+                        alert("すでにゲームが始まっています！");
+                        location.reload();
+                        return;
+                    }
+                    let order = data.playersOrder || [];
+                    order.push(myPlayerId);
+                    update(ref(db, 'rooms/' + roomId), { playersOrder: order });
+                });
+                
+                listenToRoom();
+                changeScreen('screen-lobby');
+            });
+        }
+
+        function listenToRoom() {
+            const roomRef = ref(db, 'rooms/' + roomId);
+            onValue(roomRef, (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+                roomState = data;
+
+                if (data.status === "waiting") {
+                    document.getElementById('lobby-room-title').innerText = `部屋パスワード: ${roomId}`;
+                    const listEl = document.getElementById('lobby-players-list');
+                    listEl.innerHTML = "";
+                    data.playersOrder.forEach(pId => {
+                        const p = data.players[pId];
+                        const li = document.createElement('div');
+                        li.innerText = `・ ${p.name} ${p.isHost ? '👑(ホスト)' : ''}`;
+                        listEl.appendChild(li);
+                    });
+                    document.getElementById('start-game-btn').style.display = isHost ? 'inline-block' : 'none';
+                    changeScreen('screen-lobby');
+                }
+                
+                if (data.status === "playing") {
+                    document.getElementById('global-roadmap-box').style.display = 'block';
+                    syncGameFlow();
+                }
+
+                if (data.status === "result") {
+                    showResultView();
+                }
+            });
+        }
+
+        window.hostStartGame = function() {
+            if(!isHost) return;
+            update(ref(db, 'rooms/' + roomId), { status: "playing", currentIndex: 0 });
+        }
+
+        function syncGameFlow() {
+            const order = roomState.playersOrder;
+            const curIdx = roomState.currentIndex;
+            
+            if (curIdx >= order.length * 4) {
+                if(isHost) {
+                    update(ref(db, 'rooms/' + roomId), { status: "result" });
+                }
+                return;
+            }
+
+            drawRoadmap();
+
+            const currentTurnPlayerId = order[curIdx % order.length];
+            const currentTurnPlayerName = roomState.players[currentTurnPlayerId].name;
+
+            if (currentTurnPlayerId === myPlayerId) {
+                if (document.getElementById('screen-draw').classList.contains('active') || document.getElementById('screen-answer').classList.contains('active')) {
+                    // nop
+                } else {
+                    changeScreen('screen-turn');
+                    document.getElementById('turn-message').innerText = `あなたの番です！`;
+                }
+            } else {
+                changeScreen('screen-wait-turn');
+                document.getElementById('wait-message').innerText = `いまは ${currentTurnPlayerName} さんが描いています...`;
+            }
+        }
+
+        function drawRoadmap() {
+            const curIdx = roomState.currentIndex;
+            const order = roomState.playersOrder;
+            const currentRound = Math.floor(curIdx / order.length) + 1;
+            
+            document.getElementById('round-title').innerText = `【 ${currentRound} / 4 周目 】お題：『${roomState.startChar}』➔『${roomState.endChar}』`;
+
+            const listEl = document.getElementById('roadmap-list');
+            listEl.innerHTML = '';
+
+            const startNode = document.createElement('div');
+            startNode.className = 'roadmap-endpoint';
+            startNode.innerText = roomState.startChar;
+            listEl.appendChild(startNode);
+
+            const totalTurns = order.length * 4;
+            const gameDataList = roomState.gameData || [];
+
+            for (let i = 0; i < totalTurns; i++) {
+                const arrow = document.createElement('div');
+                arrow.className = 'roadmap-arrow';
+                arrow.innerText = '➔';
+                listEl.appendChild(arrow);
+
+                const node = document.createElement('div');
+                node.className = 'roadmap-node';
+                const pId = order[i % order.length];
+                const pName = roomState.players[pId].name;
+
+                if (i < curIdx && gameDataList[i]) {
+                    node.innerHTML = `
+                        <div class="node-pname">${pName}</div>
+                        <img class="node-img" src="${gameDataList[i].image}">
+                        <div class="node-chars">${gameDataList[i].answer.length}文字</div>
+                    `;
+                    attachPreviewEvents(node, i);
+                } else if (i === curIdx) {
+                    node.classList.add('active-now');
+                    node.innerHTML = `
+                        <div class="node-pname" style="color:#e67e22;">★ ${pName}</div>
+                        <div style="font-size:24px; margin:20px 0; color:#e67e22;">✍</div>
+                        <div class="node-chars">描画中</div>
+                    `;
+                } else {
+                    node.classList.add('blank');
+                    node.innerHTML = `
+                        <div class="node-pname" style="color:#888;">${pName}</div>
+                        <div style="font-size:20px; margin:20px 0;">？</div>
+                        <div class="node-chars">ーー</div>
+                    `;
+                }
+                listEl.appendChild(node);
+            }
+
+            const endArrow = document.createElement('div');
+            endArrow.className = 'roadmap-arrow';
+            endArrow.innerText = '➔';
+            listEl.appendChild(endArrow);
+
+            const endNode = document.createElement('div');
+            endNode.className = 'roadmap-endpoint';
+            endNode.style.backgroundColor = '#27ae60';
+            endNode.innerText = roomState.endChar;
+            listEl.appendChild(endNode);
+        }
+
+        function attachPreviewEvents(element, index) {
+            const overlay = document.getElementById('preview-overlay');
+            const previewImg = document.getElementById('preview-img');
+            const previewName = document.getElementById('preview-name');
+            const gameDataList = roomState.gameData || [];
+
+            function showPreview(e) {
+                e.preventDefault();
+                const data = gameDataList[index];
+                previewImg.src = data.image;
+                previewName.innerText = `${index + 1}番手: ${data.player} の絵 (${data.answer.length}文字)`;
+                overlay.style.display = 'flex';
+            }
+            function hidePreview() { overlay.style.display = 'none'; }
+
+            element.addEventListener('mousedown', showPreview);
+            window.addEventListener('mouseup', hidePreview);
+            element.addEventListener('touchstart', showPreview, {passive: false});
+            window.addEventListener('touchend', hidePreview);
+        }
+
+        window.startDrawing = function() {
+            changeScreen('screen-draw');
+            document.getElementById('drawer-name').innerText = `あなたの番！キャンバスに描いてね！`;
+            
+            isEraserMode = false;
+            currentColor = '#4a3b32';
+            currentLineWidth = 4;
+            document.getElementById('eraser-btn').classList.remove('selected');
+            document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
+            document.querySelector('.color-dot').classList.add('selected');
+            document.getElementById('line-width-select').value = "4";
+
+            clearCanvas();
+            setupCanvasEvents();
+            
+            let timeLeft = 60;
+            document.getElementById('time-left').innerText = timeLeft;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time-left').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    alert('時間切れ！');
+                    finishDrawing();
+                }
+            }, 1000);
+        }
+
+        window.clearCanvas = function() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        window.finishDrawing = function() {
+            clearInterval(timerInterval);
+            changeScreen('screen-answer');
+            document.getElementById('correct-answer').value = '';
+        }
+
+        window.submitAnswer = function() {
+            const answerInput = document.getElementById('correct-answer').value.trim();
+            if (!answerInput) {
+                alert('正解ワードをいれてね！');
+                return;
+            }
+
+            const imageData = canvas.toDataURL();
+            const gameDataList = roomState.gameData || [];
+            
+            gameDataList.push({
+                player: myPlayerName,
+                image: imageData,
+                answer: answerInput
+            });
+
+            const nextIdx = roomState.currentIndex + 1;
+            update(ref(db, 'rooms/' + roomId), {
+                gameData: gameDataList,
+                currentIndex: nextIdx
+            });
+        }
+
+        function showResultView() {
+            changeScreen('screen-result');
+            drawRoadmap();
+
+            const gameDataList = roomState.gameData || [];
+            let correctCount = 0;
+            const maxScore = gameDataList.length + 1;
+            
+            if(gameDataList.length === 0) return;
+
+            const firstHira = kataToHira(gameDataList[0].answer);
+            if (firstHira.length > 0 && firstHira.charAt(0) === roomState.startChar) correctCount++;
+            
+            for (let i = 0; i < gameDataList.length - 1; i++) {
+                const currentHira = kataToHira(gameDataList[i].answer);
+                const nextHira = kataToHira(gameDataList[i+1].answer);
+                if (currentHira.length > 0 && nextHira.length > 0) {
+                    let lastChar = currentHira.slice(-1);
+                    if (lastChar === 'ー' && currentHira.length > 1) lastChar = currentHira.slice(-2, -1);
+                    if (lastChar === nextHira.charAt(0) && lastChar !== 'ん') correctCount++;
+                }
+            }
+            
+            const lastHira = kataToHira(gameDataList[gameDataList.length - 1].answer);
+            if (lastHira.length > 0) {
+                let finalChar = lastHira.slice(-1);
+                if (finalChar === 'ー' && lastHira.length > 1) finalChar = lastHira.slice(-2, -1);
+                if (finalChar === roomState.endChar) correctCount++;
+            }
+            
+            const successRate = Math.round((correctCount / maxScore) * 100);
+            document.getElementById('stats-area').innerHTML = `
+                <div class="badge">しりとり結果</div><br>
+                <span style="font-size: 24px; color:#d35400;">正答率: ${successRate}%</span><br>
+                (${maxScore}箇所中 ${correctCount}箇所成功!)
+            `;
+
+            const gridList = document.getElementById('result-grid-list');
+            gridList.innerHTML = '';
+            gameDataList.forEach((data, index) => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                
+                let mark = "✅ 成功";
+                const currentHira = kataToHira(data.answer);
+                
+                if (index === 0 && currentHira.charAt(0) !== roomState.startChar) mark = "❌ スタート失敗";
+                if (index > 0) {
+                    const prevHira = kataToHira(gameDataList[index-1].answer);
+                    let prevLast = prevHira.slice(-1);
+                    if (prevLast === 'ー' && prevHira.length > 1) prevLast = prevHira.slice(-2, -1);
+                    if (prevLast !== currentHira.charAt(0)) mark = "❌ 不成立";
+                }
+                
+                let finalChar = currentHira.slice(-1);
+                if (finalChar === 'ー' && currentHira.length > 1) finalChar = currentHira.slice(-2, -1);
+                if (index === gameDataList.length - 1 && finalChar !== roomState.endChar) mark += " & ❌ ゴール失敗";
+
+                card.innerHTML = `
+                    <div style="font-size: 12px; color: #7f8c8d;">${index + 1}番手: ${data.player}</div>
+                    <div style="font-weight: bold; font-size: 16px; margin: 4px 0;">${data.answer}</div>
+                    <div style="font-size: 11px; color: #e67e22;">${mark}</div>
+                    <img src="${data.image}">
+                `;
+                gridList.appendChild(card);
+            });
+
+            document.getElementById('next-round-btn').style.display = isHost ? 'inline-block' : 'none';
+        }
+
+        window.nextRound = function() {
+            if(!isHost) return;
+            const startChar = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ"[Math.floor(Math.random() * 42)];
+            let endChar = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ"[Math.floor(Math.random() * 42)];
+            while(startChar === endChar) {
+                endChar = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ"[Math.floor(Math.random() * 42)];
+            }
+            let shuffledOrder = [...roomState.playersOrder].sort(() => Math.random() - 0.5);
+
+            update(ref(db, 'rooms/' + roomId), {
+                status: "playing",
+                currentIndex: 0,
+                gameData: [],
+                startChar: startChar,
+                endChar: endChar,
+                playersOrder: shuffledOrder
+            });
+        }
+
+        window.selectColor = function(color, element) {
+            isEraserMode = false; currentColor = color;
+            document.getElementById('eraser-btn').classList.remove('selected');
+            document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+
+        window.selectEraser = function() {
+            isEraserMode = true;
+            document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
+            document.getElementById('eraser-btn').classList.add('selected');
+            currentLineWidth = 20;
+            document.getElementById('line-width-select').value = "20";
+        }
+
+        window.selectWidth = function(width) { currentLineWidth = parseInt(width); }
+
+        function setupCanvasEvents() {
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            }
+            canvas.onmousedown = canvas.ontouchstart = function(e) {
+                isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
+            };
+            canvas.onmousemove = canvas.ontouchmove = function(e) {
+                if (!isDrawing) return; e.preventDefault(); const pos = getPos(e);
+                ctx.lineWidth = currentLineWidth; ctx.lineCap = 'round';
+                ctx.strokeStyle = isEraserMode ? '#ffffff' : currentColor;
+                ctx.lineTo(pos.x, pos.y); ctx.stroke();
+            };
+            canvas.onmouseup = canvas.onmouseleave = canvas.ontouchend = function() { isDrawing = false; };
+        }
+    </script>
 </head>
 <body>
 
@@ -285,25 +663,37 @@
     </div>
 
     <div id="screen-setup" class="screen active">
-        <h1>🎨 普通の絵しりとり (人数×4周)</h1>
+        <h1>🎨 オンライン絵しりとり</h1>
         <div style="margin-bottom: 15px;">
-            参加人数：<input type="number" id="player-count" value="3" min="2" max="10" style="width: 70px;">
+            あなたの名前：<br><input type="text" id="user-name" placeholder="プレイヤー名" style="width: 250px;">
         </div>
         <div style="margin-bottom: 15px;">
-            モード設定：
-            <select id="game-mode">
-                <option value="time-on">制限時間ありモード (1分)</option>
-                <option value="time-off">制限時間なしモード</option>
-            </select>
+            部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: seiryo123" style="width: 250px;">
         </div>
-        <button onclick="generatePlayerInputs()">プレイヤー名を入力する</button>
-        <div id="name-inputs-container" style="margin-top: 20px;"></div>
+        <p style="font-size: 13px; color: #7f8c8d; max-width: 400px; margin: 0 auto 15px;">※同じパスワードを入力した人と自動的に同じ部屋に入ります。誰もいないパスワードなら新しい部屋を自動で作るよ！</p>
+        <button onclick="connectLobby()">部屋に入る / 作る</button>
+    </div>
+
+    <div id="screen-lobby" class="screen">
+        <h2 id="lobby-room-title">部屋パスワード: --</h2>
+        <p>一緒に遊ぶ友達に上のパスワードを教えてあげてね。全員集まるまで待機！</p>
+        <div class="lobby-list">
+            <div style="font-weight: bold; border-bottom: 2px dashed #9c826b; padding-bottom: 5px; margin-bottom: 10px;">現在の参加メンバー：</div>
+            <div id="lobby-players-list"></div>
+        </div>
         <br>
-        <button id="start-game-btn" onclick="startGame()" style="display:none; background-color: #27ae60; border-color: #1e8449;">お題を決めてスタート！</button>
+        <button id="start-game-btn" onclick="hostStartGame()" style="display:none; background-color: #27ae60; border-color: #1e8449;">ゲームをスタートする！</button>
+        <p id="wait-host-msg" style="font-size: 14px; color:#7f8c8d;">※ホスト（一番最初に入った人）がスタートボタンを押すと始まります。</p>
+    </div>
+
+    <div id="screen-wait-turn" class="screen">
+        <h2 id="wait-message" style="color: #6d5843;">他のプレイヤーが描き終わるのを待っています...</h2>
+        <div style="font-size: 40px; margin: 20px;">☕🎨</div>
+        <p>上のタイムラインがリアルタイムで更新されるので、進み具合を見ててね！</p>
     </div>
 
     <div id="screen-turn" class="screen">
-        <h2 id="turn-message" style="font-size: 26px; color: #d35400;">〇〇さんの番です</h2>
+        <h2 style="font-size: 26px; color: #d35400;">あなたの番です！</h2>
         <p>準備ができたらボタンを押して、お絵描きを始めてね！</p>
         <button onclick="startDrawing()" style="font-size: 20px; padding: 12px 40px;">お絵描きを始める</button>
     </div>
@@ -311,28 +701,31 @@
     <div id="screen-draw" class="screen">
         <div class="game-main-layout">
             <div>
-                <h2 id="drawer-name">〇〇さん、描いて！</h2>
-                <div id="timer-box" class="timer">残り時間: <span id="time-left">60</span>秒</div>
+                <h2 id="drawer-name">キャンバスに描いて！</h2>
+                <div style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">残り時間: <span id="time-left">60</span>秒</div>
                 <div style="margin-bottom: 15px;">
                     <button onclick="clearCanvas()" style="background-color: #7f8c8d; border-color:#626d6e; margin-right:10px;">全部消す</button>
-                    <button onclick="finishDrawing()" style="background-color: #27ae60; border-color: #1e8449;">描けた！(次へ)</button>
+                    <button onclick="finishDrawing()" style="background-color: #27ae60; border-color: #1e8449;">描けた！</button>
                 </div>
             </div>
             
             <div class="canvas-area">
                 <div class="palette-container">
-                    <div class="color-dot selected" style="background-color: #4a3b32;" onclick="selectColor('#4a3b32', this)"></div> <div class="color-dot" style="background-color: #c0392b;" onclick="selectColor('#c0392b', this)"></div> <div class="color-dot" style="background-color: #e67e22;" onclick="selectColor('#e67e22', this)"></div> <div class="color-dot" style="background-color: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div> <div class="color-dot" style="background-color: #27ae60;" onclick="selectColor('#27ae60', this)"></div> <div class="color-dot" style="background-color: #2980b9;" onclick="selectColor('#2980b9', this)"></div> <div class="color-dot" style="background-color: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div> <button id="eraser-btn" class="eraser-btn" onclick="selectEraser()">
-                        <span>🧹</span>消しゴム
-                    </button>
-                    
+                    <div class="color-dot selected" style="background-color: #4a3b32;" onclick="selectColor('#4a3b32', this)"></div>
+                    <div class="color-dot" style="background-color: #c0392b;" onclick="selectColor('#c0392b', this)"></div>
+                    <div class="color-dot" style="background-color: #e67e22;" onclick="selectColor('#e67e22', this)"></div>
+                    <div class="color-dot" style="background-color: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div>
+                    <div class="color-dot" style="background-color: #27ae60;" onclick="selectColor('#27ae60', this)"></div>
+                    <div class="color-dot" style="background-color: #2980b9;" onclick="selectColor('#2980b9', this)"></div>
+                    <div class="color-dot" style="background-color: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div>
+                    <button id="eraser-btn" class="eraser-btn" onclick="selectEraser()"><span>🧹</span>消しゴム</button>
                     <select id="line-width-select" class="tool-select" onchange="selectWidth(this.value)">
                         <option value="4">ふつうの太さ</option>
                         <option value="10">ふとい線</option>
-                        <option value="20">かなり太い（消しゴム用）</option>
-                        <option value="40">超ぶっとい（消しゴム用）</option>
+                        <option value="20">かなり太い</option>
+                        <option value="40">超ぶっとい</option>
                     </select>
                 </div>
-                
                 <canvas id="canvas" width="380" height="380"></canvas>
             </div>
         </div>
@@ -340,429 +733,32 @@
 
     <div id="screen-answer" class="screen">
         <h2>今描いたものの「正解ワード」は？</h2>
-        <p style="font-size: 14px; color:#7f8c8d;">※ひらがな、カタカナのどちらでも大丈夫です！</p>
-        <input type="text" id="correct-answer" placeholder="例: りんご / ゴリラ" style="font-size: 20px; width: 60%; max-width: 300px;"><br><br>
-        <button onclick="submitAnswer()" style="background-color: #2980b9; border-color:#21618c;">確定して次の人へ</button>
+        <input type="text" id="correct-answer" placeholder="例: りんご" style="font-size: 20px; width: 60%; max-width: 300px;"><br><br>
+        <button onclick="submitAnswer()" style="background-color: #2980b9; border-color:#21618c;">確定して次の人へ送信</button>
     </div>
 
     <div id="screen-result" class="screen">
         <h2>🎉 結果発表 🎉</h2>
         <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">
-            <div id="stats-area" style="background:#fff3cd; border:2px solid #ffc107; padding:15px; border-radius:8px; font-weight:bold; flex:1; min-width:250px;"></div>
-            <div id="mvp-area" style="background:#d4edda; border:2px solid #28a745; padding:15px; border-radius:8px; font-weight:bold; flex:1; min-width:250px;"></div>
+            <div id="stats-area" style="background:#fff3cd; border:2px solid #ffc107; padding:15px; border-radius:8px; font-weight:bold; width: 100%;"></div>
         </div>
         
         <h3 style="text-align: left; border-bottom: 2px dashed #9c826b; padding-bottom: 5px;">全員のリレー一覧：</h3>
         <div id="result-grid-list" class="result-grid"></div>
         
         <div style="margin-top: 30px;">
-            <button onclick="nextRound()" style="background-color: #27ae60; border-color: #1e8449; font-size:18px;">次のラウンドへ（メンバーを引き継ぐ）</button>
-            <button onclick="location.reload()" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:15px;">最初からやり直す</button>
+            <button id="next-round-btn" onclick="nextRound()" style="display:none; background-color: #27ae60; border-color: #1e8449; font-size:18px;">次のラウンドへ（ホストのみ操作可）</button>
+            <button onclick="location.reload()" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:15px;">タイトルへ戻る</button>
         </div>
     </div>
 </div>
 
-<div id="preview-overlay">
+<div id="preview-overlay" onclick="this.style.display='none'">
     <div id="preview-box">
-        <img id="preview-img" src="" alt="拡大画像">
+        <img id="preview-img" src="">
         <div id="preview-name"></div>
     </div>
 </div>
-
-<script>
-    let players = [];
-    let currentIndex = 0; 
-    let totalTurns = 0;
-    let gameData = [];   
-    let isTimeMode = true; 
-    
-    let timerInterval;
-    let timeLeft = 60;
-    let timeSpent = 0;
-    
-    let startChar = "";
-    let endChar = "";
-    const hiraganaList = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ";
-
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    let isDrawing = false;
-    
-    let currentColor = '#4a3b32';
-    let currentLineWidth = 4;
-    let isEraserMode = false; // 消しゴムモードかどうかのフラグ
-
-    function kataToHira(str) {
-        return str.replace(/[\u30a1-\u30f6]/g, function(match) {
-            const chr = match.charCodeAt(0) - 0x60;
-            return String.fromCharCode(chr);
-        });
-    }
-
-    function generatePlayerInputs() {
-        const count = parseInt(document.getElementById('player-count').value);
-        const container = document.getElementById('name-inputs-container');
-        container.innerHTML = '';
-        for (let i = 1; i <= count; i++) {
-            const div = document.createElement('div');
-            div.style.margin = "5px 0";
-            div.innerHTML = `プレイヤー${i}: <input type="text" class="player-name" value="プレイヤー${i}" style="width:50%">`;
-            container.appendChild(div);
-        }
-        document.getElementById('start-game-btn').style.display = 'inline-block';
-    }
-
-    function startGame() {
-        const nameInputs = document.querySelectorAll('.player-name');
-        players = Array.from(nameInputs).map(input => input.value.trim() || '名無し');
-        totalTurns = players.length * 4;
-        currentIndex = 0;
-        gameData = [];
-        
-        isTimeMode = (document.getElementById('game-mode').value === 'time-on');
-        
-        initRoundOdai();
-        document.getElementById('global-roadmap-box').style.display = 'block';
-        showTurnScreen();
-    }
-
-    function initRoundOdai() {
-        startChar = hiraganaList[Math.floor(Math.random() * hiraganaList.length)];
-        do {
-            endChar = hiraganaList[Math.floor(Math.random() * hiraganaList.length)];
-        } while (startChar === endChar);
-    }
-
-    function changeScreen(screenId) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(screenId).classList.add('active');
-    }
-
-    function attachPreviewEvents(element, index) {
-        const overlay = document.getElementById('preview-overlay');
-        const previewImg = document.getElementById('preview-img');
-        const previewName = document.getElementById('preview-name');
-
-        function showPreview(e) {
-            e.preventDefault();
-            const data = gameData[index];
-            previewImg.src = data.image;
-            previewName.innerText = `${index + 1}番手: ${data.player} の絵 (${data.answer.length}文字)`;
-            overlay.style.display = 'flex';
-        }
-
-        function hidePreview() {
-            overlay.style.display = 'none';
-        }
-
-        element.addEventListener('mousedown', showPreview);
-        window.addEventListener('mouseup', hidePreview);
-
-        element.addEventListener('touchstart', showPreview, {passive: false});
-        window.addEventListener('touchend', hidePreview);
-        window.addEventListener('touchcancel', hidePreview);
-    }
-
-    function drawRoadmap() {
-        const currentRound = Math.floor(currentIndex / players.length) + 1;
-        document.getElementById('round-title').innerText = `【 ${currentRound} / 4 周目 】お題：『${startChar}』からはじまって『${endChar}』で終わる！`;
-
-        const listEl = document.getElementById('roadmap-list');
-        listEl.innerHTML = '';
-
-        const startNode = document.createElement('div');
-        startNode.className = 'roadmap-endpoint';
-        startNode.innerText = startChar;
-        listEl.appendChild(startNode);
-
-        for (let i = 0; i < totalTurns; i++) {
-            const arrow = document.createElement('div');
-            arrow.className = 'roadmap-arrow';
-            arrow.innerText = '➔';
-            listEl.appendChild(arrow);
-
-            const node = document.createElement('div');
-            node.className = 'roadmap-node';
-            const pName = players[i % players.length];
-
-            if (i < currentIndex) {
-                node.innerHTML = `
-                    <div class="node-pname">${pName}</div>
-                    <img class="node-img" src="${gameData[i].image}">
-                    <div class="node-chars">${gameData[i].answer.length}文字</div>
-                `;
-                attachPreviewEvents(node, i);
-                
-            } else if (i === currentIndex) {
-                node.classList.add('active-now');
-                node.innerHTML = `
-                    <div class="node-pname" style="color:#e67e22;">★ ${pName}</div>
-                    <div style="font-size:24px; margin:20px 0; color:#e67e22;">✍</div>
-                    <div class="node-chars">描画中</div>
-                `;
-            } else {
-                node.classList.add('blank');
-                node.innerHTML = `
-                    <div class="node-pname" style="color:#888;">${pName}</div>
-                    <div style="font-size:20px; margin:20px 0;">？</div>
-                    <div class="node-chars">ーー</div>
-                `;
-            }
-            listEl.appendChild(node);
-        }
-
-        const endArrow = document.createElement('div');
-        endArrow.className = 'roadmap-arrow';
-        endArrow.innerText = '➔';
-        listEl.appendChild(endArrow);
-
-        const endNode = document.createElement('div');
-        endNode.className = 'roadmap-endpoint';
-        endNode.style.backgroundColor = '#27ae60';
-        endNode.innerText = endChar;
-        listEl.appendChild(endNode);
-        
-        setTimeout(() => {
-            const activeNode = document.querySelector('.active-now');
-            if (activeNode) activeNode.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }, 100);
-    }
-
-    function showTurnScreen() {
-        changeScreen('screen-turn');
-        const playerInRound = players[currentIndex % players.length];
-        document.getElementById('turn-message').innerText = `${playerInRound} さんの番です`;
-        drawRoadmap();
-    }
-
-    // カラーの選択関数
-    function selectColor(color, element) {
-        isEraserMode = false;
-        currentColor = color;
-        document.getElementById('eraser-btn').classList.remove('selected');
-        document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
-        element.classList.add('selected');
-    }
-
-    // ★消しゴムモードの選択関数★
-    function selectEraser() {
-        isEraserMode = true;
-        document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
-        document.getElementById('eraser-btn').classList.add('selected');
-        
-        // 消しゴムが選ばれたら、使いやすいように自動的に太さを20pxに変更する
-        currentLineWidth = 20;
-        document.getElementById('line-width-select').value = "20";
-    }
-
-    function selectWidth(width) {
-        currentLineWidth = parseInt(width);
-    }
-
-    function startDrawing() {
-        changeScreen('screen-draw');
-        const playerInRound = players[currentIndex % players.length];
-        document.getElementById('drawer-name').innerText = `${playerInRound} さん、キャンバスに描いて！`;
-        
-        // 初期状態リセット（焦げ茶・通常太さ・ペンモード）
-        isEraserMode = false;
-        currentColor = '#4a3b32';
-        currentLineWidth = 4;
-        document.getElementById('eraser-btn').classList.remove('selected');
-        document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('selected'));
-        document.querySelector('.color-dot').classList.add('selected');
-        document.getElementById('line-width-select').value = "4";
-
-        clearCanvas();
-        setupCanvasEvents();
-        drawRoadmap();
-        
-        timeSpent = 0;
-        clearInterval(timerInterval);
-
-        if (isTimeMode) {
-            document.getElementById('timer-box').style.display = 'block';
-            timeLeft = 60;
-            document.getElementById('time-left').innerText = timeLeft;
-            
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                timeSpent++;
-                document.getElementById('time-left').innerText = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    alert('時間切れ！正解入力へ移ります。');
-                    finishDrawing();
-                }
-            }, 1000);
-        } else {
-            document.getElementById('timer-box').style.display = 'none';
-            timerInterval = setInterval(() => {
-                timeSpent++;
-            }, 1000);
-        }
-    }
-
-    function setupCanvasEvents() {
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
-        }
-        function start(e) { 
-            isDrawing = true; 
-            const pos = getPos(e); 
-            ctx.beginPath(); 
-            ctx.moveTo(pos.x, pos.y); 
-        }
-        function draw(e) { 
-            if (!isDrawing) return; 
-            e.preventDefault(); 
-            const pos = getPos(e); 
-            
-            ctx.lineWidth = currentLineWidth;
-            ctx.lineCap = 'round';
-            
-            // ★消しゴムモードなら背景色（白）、ペンモードなら選択色を適用★
-            ctx.strokeStyle = isEraserMode ? '#ffffff' : currentColor;
-            
-            ctx.lineTo(pos.x, pos.y); 
-            ctx.stroke(); 
-        }
-        function stop() { isDrawing = false; }
-
-        canvas.onmousedown = start; canvas.onmousemove = draw; canvas.onmouseup = stop; canvas.onmouseleave = stop;
-        canvas.ontouchstart = start; canvas.ontouchmove = draw; canvas.ontouchend = stop;
-    }
-
-    function clearCanvas() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    function finishDrawing() {
-        clearInterval(timerInterval);
-        changeScreen('screen-answer');
-        document.getElementById('correct-answer').value = '';
-    }
-
-    function submitAnswer() {
-        const answerInput = document.getElementById('correct-answer').value.trim();
-        if (!answerInput) {
-            alert('正解のワードを入力してね！');
-            return;
-        }
-
-        const imageData = canvas.toDataURL();
-        const playerInRound = players[currentIndex % players.length];
-        
-        gameData.push({
-            player: playerInRound,
-            image: imageData,
-            answer: answerInput,
-            timeSpent: timeSpent
-        });
-
-        currentIndex++;
-        if (currentIndex < totalTurns) {
-            showTurnScreen();
-        } else {
-            showResult();
-        }
-    }
-
-    function showResult() {
-        changeScreen('screen-result');
-        drawRoadmap();
-
-        let correctCount = 0;
-        const maxScore = gameData.length + 1;
-        
-        const firstHira = kataToHira(gameData[0].answer);
-        if (firstHira.length > 0 && firstHira.charAt(0) === startChar) correctCount++;
-        
-        for (let i = 0; i < gameData.length - 1; i++) {
-            const currentHira = kataToHira(gameData[i].answer);
-            const nextHira = kataToHira(gameData[i+1].answer);
-            
-            if (currentHira.length > 0 && nextHira.length > 0) {
-                let lastChar = currentHira.slice(-1);
-                if (lastChar === 'ー' && currentHira.length > 1) {
-                    lastChar = currentHira.slice(-2, -1);
-                }
-                const nextFirstChar = nextHira.charAt(0);
-                if (lastChar === nextFirstChar && lastChar !== 'ん') correctCount++;
-            }
-        }
-        
-        const lastHira = kataToHira(gameData[gameData.length - 1].answer);
-        if (lastHira.length > 0) {
-            let finalChar = lastHira.slice(-1);
-            if (finalChar === 'ー' && lastHira.length > 1) {
-                finalChar = lastHira.slice(-2, -1);
-            }
-            if (finalChar === endChar) correctCount++;
-        }
-        
-        const successRate = Math.round((correctCount / maxScore) * 100);
-        
-        document.getElementById('stats-area').innerHTML = `
-            <div class="badge">しりとり結果</div><br>
-            <span style="font-size: 24px; color:#d35400;">正答率: ${successRate}%</span><br>
-            (${maxScore}箇所中 ${correctCount}箇所成功!)`
-        ;
-
-        let fastestTurn = gameData[0];
-        gameData.forEach(data => {
-            if (data.timeSpent < fastestTurn.timeSpent) fastestTurn = data;
-        });
-        document.getElementById('mvp-area').innerHTML = `
-            <div class="badge" style="background:#27ae60;">最速MVP</div><br>
-            <span style="font-size: 20px; color:#27ae60;">${fastestTurn.player} さん</span><br>
-            (作画タイム: ${fastestTurn.timeSpent} 秒！)`
-        ;
-
-        const gridList = document.getElementById('result-grid-list');
-        gridList.innerHTML = '';
-        gameData.forEach((data, index) => {
-            const card = document.createElement('div');
-            card.className = 'result-card';
-            
-            let mark = "✅ 成功";
-            const currentHira = kataToHira(data.answer);
-            
-            if (index === 0 && currentHira.charAt(0) !== startChar) mark = "❌ スタート失敗";
-            if (index > 0) {
-                const prevHira = kataToHira(gameData[index-1].answer);
-                let prevLast = prevHira.slice(-1);
-                if (prevLast === 'ー' && prevHira.length > 1) prevLast = prevHira.slice(-2, -1);
-                
-                if (prevLast !== currentHira.charAt(0)) mark = "❌ 不成立";
-            }
-            
-            let finalChar = currentHira.slice(-1);
-            if (finalChar === 'ー' && currentHira.length > 1) finalChar = currentHira.slice(-2, -1);
-            if (index === gameData.length - 1 && finalChar !== endChar) mark += " & ❌ ゴール失敗";
-
-            card.innerHTML = `
-                <div style="font-size: 12px; color: #7f8c8d;">${index + 1}番手: ${data.player}</div>
-                <div style="font-weight: bold; font-size: 16px; margin: 4px 0;">${data.answer}</div>
-                <div style="font-size: 11px; color: #e67e22;">${mark} (${data.timeSpent}秒)</div>
-                <img src="${data.image}">
-            `;
-            gridList.appendChild(card);
-        });
-    }
-
-    function nextRound() {
-        currentIndex = 0;
-        gameData = [];
-        initRoundOdai();
-        showTurnScreen();
-    }
-</script>
 
 </body>
 </html>
