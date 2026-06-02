@@ -223,7 +223,7 @@ function drawRoadmap() {
             attachPreviewEvents(node, i);
         } else if (i === curIdx) {
             node.classList.add('active-now');
-            let miniLiveSrc = roomState.canvasData || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><text x="30" y="50" font-size="24">✍</text></svg>';
+            let miniLiveSrc = roomState.canvasData || 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><text x="30" y="50" font-size="24">✍</text></svg>');
             node.innerHTML = `
                 <div class="node-pname" style="color:#e67e22;">★ ${pName}</div>
                 <img class="node-img" src="${miniLiveSrc}" style="border-color:#e67e22;">
