@@ -453,21 +453,53 @@ window.submitGuess = function() {
     const normalizedTarget = kataToHira(roomState.currentWord);
 
     if (normalizedGuess === normalizedTarget) {
-        // 正解！
-        const newScore = (roomState.players[myPlayerId].score || 0) + 100;
-        const drawerId = roomState.drawerId;
-        const newDrawerScore = (roomState.players[drawerId].score || 0) + 50;
+        // 正解！最新の部屋データを取得して正確な順位判定と得点計算を行う
+        get(ref(db, 'rooms-quiz/' + roomId)).then((snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
 
-        const updates = {};
-        updates[`players/${myPlayerId}/score`] = newScore;
-        updates[`players/${myPlayerId}/guessedCorrectly`] = true;
-        updates[`players/${drawerId}/score`] = newDrawerScore;
+            // 二重送信防止（通信の遅延等で既に正解済みの場合は処理しない）
+            if (data.players[myPlayerId].guessedCorrectly) return;
 
-        update(ref(db, 'rooms-quiz/' + roomId), updates).then(() => {
-            sendSystemMessage(`🎉 ${myPlayerName} さんが正解しました！ (+100pt / 描き手 +50pt)`, "correct");
+            // 既に正解したプレイヤーの人数をカウント
+            let correctCount = 0;
+            if (data.players) {
+                Object.keys(data.players).forEach(pId => {
+                    if (pId !== data.drawerId && data.players[pId].guessedCorrectly) {
+                        correctCount++;
+                    }
+                });
+            }
 
-            // 全員が正解したかチェック
-            checkAllGuessed();
+            // 早い順で得点を決定
+            let earnedPoints = 100;
+            let rankText = "1位";
+            if (correctCount === 1) {
+                earnedPoints = 80;
+                rankText = "2位";
+            } else if (correctCount === 2) {
+                earnedPoints = 60;
+                rankText = "3位";
+            } else if (correctCount >= 3) {
+                earnedPoints = 50;
+                rankText = "4位以降";
+            }
+
+            const newScore = (data.players[myPlayerId].score || 0) + earnedPoints;
+            const drawerId = data.drawerId;
+            const newDrawerScore = (data.players[drawerId].score || 0) + 50;
+
+            const updates = {};
+            updates[`players/${myPlayerId}/score`] = newScore;
+            updates[`players/${myPlayerId}/guessedCorrectly`] = true;
+            updates[`players/${drawerId}/score`] = newDrawerScore;
+
+            update(ref(db, 'rooms-quiz/' + roomId), updates).then(() => {
+                sendSystemMessage(`🎉 ${myPlayerName} さんが正解しました！ (${rankText}: +${earnedPoints}pt / 描き手 +50pt)`, "correct");
+
+                // 全員が正解したかチェック
+                checkAllGuessed();
+            });
         });
     } else {
         // 不正解チャット送信
