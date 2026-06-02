@@ -20,6 +20,7 @@ let myPlayerId = "";
 let myUserId = localStorage.getItem('userId') || "";
 let isHost = false;
 let roomState = null;
+let lastSyncStep = -1;
 
 // アカウント名自動入力とURLクエリによる自動入室
 document.addEventListener("DOMContentLoaded", () => {
@@ -127,6 +128,14 @@ function listenToRoom() {
     onValue(roomRef, (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
+        
+        // ステータスが playing に切り替わった瞬間にステップ履歴をリセット
+        if (roomState && data.status === "playing") {
+            if (roomState.status !== "playing") {
+                lastSyncStep = -1;
+            }
+        }
+        
         roomState = data;
 
         if (data.status === "waiting") {
@@ -226,6 +235,13 @@ function syncGameFlow() {
     }
 
     const step = roomState.currentStep;
+    
+    // すでに同じステップを実行中の場合は何もしない（他人の送信による画面リセットを防ぐ）
+    if (lastSyncStep === step) {
+        return;
+    }
+    lastSyncStep = step;
+
     const order = roomState.playersOrder;
     const N = order.length;
     const myIndex = order.indexOf(myPlayerId);
