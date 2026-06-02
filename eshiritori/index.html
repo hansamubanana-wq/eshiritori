@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>リアルタイム絵しりとり</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="app.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div id="global-roadmap-box" style="display:none;">
+        <div id="round-title" style="font-weight: bold; font-size: 16px; margin-bottom: 5px; text-align: left;"></div>
+        <p style="font-size: 12px; color:#7f8c8d; text-align: left; margin: 0 0 5px 0;">※前の人の絵を押している間は大きく見えるよ！</p>
+        <div class="roadmap-outer">
+            <div id="roadmap-list" class="roadmap-container"></div>
+        </div>
+    </div>
+
+    <div id="screen-setup" class="screen active">
+        <h1>🎨 オンライン絵しりとり</h1>
+        <div style="margin-bottom: 15px;">
+            あなたの名前：<br><input type="text" id="user-name" placeholder="プレイヤー名" style="width: 250px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: seiryo123" style="width: 250px;">
+        </div>
+        <p style="font-size: 13px; color: #7f8c8d; max-width: 400px; margin: 0 auto 15px;">※同じパスワードを入力した人と自動的に同じ部屋に入ります。誰もいない、または終わった部屋のパスワードなら新しい部屋をリセットして作るよ！</p>
+        <button onclick="connectLobby()">部屋に入る / 作る</button>
+        <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:10px;">ゲーム選択に戻る</button>
+    </div>
+
+    <div id="screen-lobby" class="screen">
+        <h2 id="lobby-room-title">部屋パスワード: --</h2>
+        <p>一緒に遊ぶ友達に上のパスワードを教えてあげてね。全員集まるまで待機！</p>
+        <div class="lobby-list">
+            <div style="font-weight: bold; border-bottom: 2px dashed #9c826b; padding-bottom: 5px; margin-bottom: 10px;">現在の参加メンバー：</div>
+            <div id="lobby-players-list"></div>
+        </div>
+        <br>
+        <button id="start-game-btn" onclick="hostStartGame()" style="display:none; background-color: #27ae60; border-color: #1e8449;">ゲームをスタートする！</button>
+        <p id="wait-host-msg" style="font-size: 14px; color:#7f8c8d;">※ホスト（一番最初に入った人）がスタートボタンを押すと始まります。</p>
+    </div>
+
+    <div id="screen-wait-turn" class="screen">
+        <h2 id="wait-message" style="color: #6d5843;">他のプレイヤーが描き終わるのを待っています...</h2>
+        
+        <div style="margin: 15px 0; font-weight: bold; color: #e67e22; font-size:16px;">📺 お絵描きリアルタイム生中継モニター</div>
+        <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+            <img id="live-stream-view" class="live-canvas-display" src="" style="display:none;">
+        </div>
+        <p>上のキャンバスとタイムラインが、描かれている瞬間にリアルタイムで動くよ！</p>
+    </div>
+
+    <div id="screen-turn" class="screen">
+        <h2 id="turn-message" style="font-size: 26px; color: #d35400;">あなたの番です！</h2>
+        <p>制限時間はないので、じっくり考えて準備ができたらお絵描きを始めてね！</p>
+        <button onclick="startDrawing()" style="font-size: 20px; padding: 12px 40px;">お絵描きを始める</button>
+    </div>
+
+    <div id="screen-draw" class="screen">
+        <div class="game-main-layout">
+            <div>
+                <h2 id="drawer-name">キャンバスに描いて！</h2>
+                <div style="font-size: 14px; color: #e67e22; font-weight: bold; margin-bottom: 15px;">※ いま描いている線は全員に生中継されています！</div>
+                <div style="margin-bottom: 15px;">
+                    <button onclick="clearCanvas()" style="background-color: #7f8c8d; border-color:#626d6e; margin-right:10px;">全部消す</button>
+                    <button onclick="finishDrawing()" style="background-color: #27ae60; border-color: #1e8449;">描けた！</button>
+                </div>
+            </div>
+            
+            <div class="canvas-area">
+                <div class="palette-container">
+                    <div class="color-dot selected" style="background-color: #4a3b32;" onclick="selectColor('#4a3b32', this)"></div>
+                    <div class="color-dot" style="background-color: #c0392b;" onclick="selectColor('#c0392b', this)"></div>
+                    <div class="color-dot" style="background-color: #e67e22;" onclick="selectColor('#e67e22', this)"></div>
+                    <div class="color-dot" style="background-color: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div>
+                    <div class="color-dot" style="background-color: #27ae60;" onclick="selectColor('#27ae60', this)"></div>
+                    <div class="color-dot" style="background-color: #2980b9;" onclick="selectColor('#2980b9', this)"></div>
+                    <div class="color-dot" style="background-color: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div>
+                    <button id="eraser-btn" class="eraser-btn" onclick="selectEraser()"><span>🧹</span>消しゴム</button>
+                    <select id="line-width-select" class="tool-select" onchange="selectWidth(this.value)">
+                        <option value="4">ふつうの太さ</option>
+                        <option value="10">ふとい線</option>
+                        <option value="20">かなり太い</option>
+                        <option value="40">超ぶっとい</option>
+                    </select>
+                </div>
+                <canvas id="canvas" width="380" height="380"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-answer" class="screen">
+        <h2>今描いたものの「正解ワード」は？</h2>
+        <input type="text" id="correct-answer" placeholder="例: りんご" style="font-size: 20px; width: 60%; max-width: 300px;"><br><br>
+        <button onclick="submitAnswer()" style="background-color: #2980b9; border-color:#21618c;">確定して次の人へ送信</button>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <h2>🎉 結果発表 🎉</h2>
+        <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">
+            <div id="stats-area" style="background:#fff3cd; border:2px solid #ffc107; padding:15px; border-radius:8px; font-weight:bold; width: 100%;"></div>
+        </div>
+        
+        <h3 style="text-align: left; border-bottom: 2px dashed #9c826b; padding-bottom: 5px;">全員のリレー一覧：</h3>
+        <div id="result-grid-list" class="result-grid"></div>
+        
+        <div style="margin-top: 30px;">
+            <button id="next-round-btn" onclick="nextRound()" style="display:none; background-color: #27ae60; border-color: #1e8449; font-size:18px;">次のラウンドへ（ホストのみ操作可）</button>
+            <button onclick="location.reload()" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:15px;">タイトルへ戻る</button>
+            <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:15px;">ゲーム選択に戻る</button>
+        </div>
+    </div>
+</div>
+
+<div id="preview-overlay" onclick="this.style.display='none'">
+    <div id="preview-box">
+        <img id="preview-img" src="">
+        <div id="preview-name"></div>
+    </div>
+</div>
+
+</body>
+</html>
