@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>お絵描き伝言ゲーム</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="app.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <!-- セットアップ画面 -->
+    <div id="screen-setup" class="screen active">
+        <h1>📞 お絵描き伝言ゲーム</h1>
+        <p>「お題を書く ➔ 描く ➔ 推測する ➔ 描く」を交代で繰り返し、最後に答えがどう伝わったか発表し合おう！</p>
+        <div style="margin-bottom: 15px;">
+            あなたの名前：<br><input type="text" id="user-name" placeholder="プレイヤー名" style="width: 250px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: den-gon" style="width: 250px;">
+        </div>
+        <p style="font-size: 13px; color: #7f8c8d; max-width: 400px; margin: 0 auto 15px;">※同じパスワードを入力した人と自動的に同じ部屋に入ります。遊ぶには2人以上が必要です！</p>
+        <button onclick="connectLobby()">部屋に入る / 作る</button>
+        <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:10px;">ゲーム選択に戻る</button>
+    </div>
+
+    <!-- 待機ロビー画面 -->
+    <div id="screen-lobby" class="screen">
+        <h2 id="lobby-room-title">部屋パスワード: --</h2>
+        <p>一緒に遊ぶ友達に上のパスワードを教えてあげてね。全員集まるまで待機！</p>
+        <div class="lobby-list">
+            <div style="font-weight: bold; border-bottom: 2px dashed #9c826b; padding-bottom: 5px; margin-bottom: 10px;">現在の参加メンバー：</div>
+            <div id="lobby-players-list"></div>
+        </div>
+        <br>
+        <button id="start-game-btn" onclick="hostStartGame()" style="display:none; background-color: #27ae60; border-color: #1e8449;">ゲームをスタートする！</button>
+        <p id="wait-host-msg" style="font-size: 14px; color:#7f8c8d;">※ホスト（一番最初に入った人）がスタートボタンを押すと始まります。</p>
+    </div>
+
+    <!-- ステップ0：お題を入力する -->
+    <div id="screen-step-0" class="screen">
+        <div class="game-layout">
+            <div class="step-indicator">ステップ 1/4 : 最初のお題を決めよう！</div>
+            <h2>次の人が絵に描きやすい（または描きにくい？）お題を入力してね！</h2>
+            <div style="margin: 20px 0;">
+                <input type="text" id="prompt-input" placeholder="例: 空飛ぶペンギン" style="width: 80%; max-width: 400px;">
+            </div>
+            <button onclick="submitPrompt()" style="background-color: #27ae60; border-color: #1e8449;">入力完了！送信</button>
+        </div>
+    </div>
+
+    <!-- ステップ1：前の人が書いたお題を絵に描く -->
+    <div id="screen-step-1" class="screen">
+        <div class="game-layout">
+            <div class="step-indicator">ステップ 2/4 : お題を絵に描こう！</div>
+            <h2 id="step-1-prompt-display" style="color: #e67e22;">お題：読み込み中...</h2>
+            
+            <div class="canvas-area" id="canvas-holder-1">
+                <div class="palette-container">
+                    <div class="color-dot selected" style="background-color: #4a3b32;" onclick="selectColor('#4a3b32', this)"></div>
+                    <div class="color-dot" style="background-color: #c0392b;" onclick="selectColor('#c0392b', this)"></div>
+                    <div class="color-dot" style="background-color: #e67e22;" onclick="selectColor('#e67e22', this)"></div>
+                    <div class="color-dot" style="background-color: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div>
+                    <div class="color-dot" style="background-color: #27ae60;" onclick="selectColor('#27ae60', this)"></div>
+                    <div class="color-dot" style="background-color: #2980b9;" onclick="selectColor('#2980b9', this)"></div>
+                    <div class="color-dot" style="background-color: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div>
+                    <button id="eraser-btn" class="eraser-btn" onclick="selectEraser()"><span>🧹</span>消しゴム</button>
+                    <select id="line-width-select" class="tool-select" onchange="selectWidth(this.value)">
+                        <option value="4">ふつうの太さ</option>
+                        <option value="10">ふとい線</option>
+                        <option value="20">かなり太い</option>
+                        <option value="40">超ぶっとい</option>
+                    </select>
+                    <button onclick="clearCanvas()" style="background-color: #7f8c8d; border-bottom: 3px solid #626d6e; padding: 4px 10px; font-size: 12px; border-radius: 12px; font-weight: bold; margin-left: 5px;">全消去</button>
+                </div>
+                <canvas id="canvas" width="380" height="380"></canvas>
+            </div>
+            
+            <button onclick="submitDrawing1()" style="background-color: #27ae60; border-color: #1e8449; margin-top: 10px;">描き終わった！送信</button>
+        </div>
+    </div>
+
+    <!-- ステップ2：前の人が描いた絵が何か推測する -->
+    <div id="screen-step-2" class="screen">
+        <div class="game-layout">
+            <div class="step-indicator">ステップ 3/4 : 絵が表す言葉を当てよう！</div>
+            <h2>前の人が描いたこの絵、一体なに？</h2>
+            
+            <div class="reference-card">
+                <img id="step-2-image-display" class="reference-image" src="">
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <input type="text" id="guess-input" placeholder="例: 空を飛ぶペンギン" style="width: 80%; max-width: 400px;">
+            </div>
+            <button onclick="submitGuess()" style="background-color: #27ae60; border-color: #1e8449;">推測完了！送信</button>
+        </div>
+    </div>
+
+    <!-- ステップ3：前の人が推測した言葉を絵に描く -->
+    <div id="screen-step-3" class="screen">
+        <div class="game-layout">
+            <div class="step-indicator">ステップ 4/4 : 推測された言葉を絵に描こう！</div>
+            <h2 id="step-3-guess-display" style="color: #e67e22;">お題：読み込み中...</h2>
+            
+            <div class="canvas-area" id="canvas-holder-3">
+                <div class="palette-container">
+                    <div class="color-dot selected" style="background-color: #4a3b32;" onclick="selectColor('#4a3b32', this)"></div>
+                    <div class="color-dot" style="background-color: #c0392b;" onclick="selectColor('#c0392b', this)"></div>
+                    <div class="color-dot" style="background-color: #e67e22;" onclick="selectColor('#e67e22', this)"></div>
+                    <div class="color-dot" style="background-color: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div>
+                    <div class="color-dot" style="background-color: #27ae60;" onclick="selectColor('#27ae60', this)"></div>
+                    <div class="color-dot" style="background-color: #2980b9;" onclick="selectColor('#2980b9', this)"></div>
+                    <div class="color-dot" style="background-color: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div>
+                    <button id="eraser-btn" class="eraser-btn" onclick="selectEraser()"><span>🧹</span>消しゴム</button>
+                    <select id="line-width-select" class="tool-select" onchange="selectWidth(this.value)">
+                        <option value="4">ふつうの太さ</option>
+                        <option value="10">ふとい線</option>
+                        <option value="20">かなり太い</option>
+                        <option value="40">超ぶっとい</option>
+                    </select>
+                    <button onclick="clearCanvas()" style="background-color: #7f8c8d; border-bottom: 3px solid #626d6e; padding: 4px 10px; font-size: 12px; border-radius: 12px; font-weight: bold; margin-left: 5px;">全消去</button>
+                </div>
+            </div>
+            
+            <button onclick="submitDrawing3()" style="background-color: #27ae60; border-color: #1e8449; margin-top: 10px;">描き終わった！送信</button>
+        </div>
+    </div>
+
+    <!-- 提出待機中画面 -->
+    <div id="screen-waiting" class="screen">
+        <div class="game-layout">
+            <div class="waiting-loader"></div>
+            <h2 id="step-indicator-text">他のプレイヤーの入力を待っています...</h2>
+            <p style="color: #7f8c8d;">全員の送信が完了すると自動的に次のステップへ進みます！</p>
+            
+            <div class="waiting-status-list">
+                <div style="font-weight: bold; border-bottom: 2px dashed #9c826b; padding-bottom: 5px; margin-bottom: 10px; text-align: center;">現在の提出状況：</div>
+                <div id="waiting-players-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 発表発表（ショーケース）画面 -->
+    <div id="screen-result" class="screen">
+        <h2 style="font-size: 26px;">📢 伝言の発表会 📢</h2>
+        <p>どのように伝わっていったか、1人ずつ振り返ってみましょう！</p>
+        
+        <div class="showcase-container">
+            <h3 id="showcase-chain-owner" style="font-size: 22px; color: #d35400;">〇〇さんの伝言歴史</h3>
+            <div id="showcase-chain-list" class="showcase-chain"></div>
+            
+            <div class="showcase-nav">
+                <button id="next-chain-btn" onclick="nextShowcaseChain()" style="background-color: #2980b9; border-color: #21618c; font-size: 18px;">次の人の伝言を見る ➔</button>
+                <button id="restart-game-btn" onclick="restartTelephoneGame()" style="display:none; background-color: #27ae60; border-color: #1e8449; font-size: 18px;">もう一度遊ぶ</button>
+                <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:15px;">ゲーム選択に戻る</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

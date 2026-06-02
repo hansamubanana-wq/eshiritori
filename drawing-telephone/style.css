@@ -1,0 +1,321 @@
+@import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Outfit:wght@400;600;800&display=swap');
+
+body {
+    font-family: 'Outfit', 'Kosugi Maru', 'Hiragino Maru Gothic ProN', sans-serif;
+    background-color: #e6dfd3;
+    background-image: radial-gradient(#d3c9b8 10%, transparent 10%);
+    background-size: 20px 20px;
+    margin: 0;
+    padding: 15px;
+    color: #4a3b32;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.container {
+    background-color: #fffdf9;
+    border: 4px solid #6d5843;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    width: 100%;
+    max-width: 1100px;
+    padding: 25px;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.container::before {
+    content: "◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯";
+    position: absolute;
+    top: -15px;
+    left: 5%;
+    width: 90%;
+    color: #7f8c8d;
+    font-size: 20px;
+    letter-spacing: 15px;
+    text-align: center;
+    pointer-events: none;
+}
+
+h1 { font-size: 24px; color: #5c4033; margin-top: 5px; margin-bottom: 20px; }
+h2 { font-size: 20px; color: #5c4033; margin: 10px 0; }
+h3 { font-size: 18px; color: #5c4033; margin: 8px 0; }
+
+button {
+    background-color: #e67e22;
+    color: white;
+    border: none;
+    border-bottom: 4px solid #d35400;
+    padding: 10px 24px;
+    font-size: 16px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.1s;
+}
+button:active { transform: translateY(3px); border-bottom: 1px solid #d35400; }
+
+input[type="text"] {
+    padding: 12px;
+    font-size: 18px;
+    border: 2px dashed #9c826b;
+    border-radius: 8px;
+    background-color: #fffdf9;
+    color: #4a3b32;
+    text-align: center;
+}
+
+.screen { display: none; }
+.screen.active { display: block; }
+
+.lobby-list {
+    text-align: left;
+    background: #f4eee1;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #9c826b;
+    margin: 15px auto;
+    max-width: 300px;
+}
+
+/* ゲームメインレイアウト */
+.game-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    text-align: center;
+}
+
+/* 進行状況バー */
+.step-indicator {
+    background: #f4eee1;
+    border: 2px solid #bdae96;
+    border-radius: 12px;
+    padding: 8px 20px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #7f6e64;
+    margin-bottom: 15px;
+}
+
+/* キャンバス */
+.canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+#canvas {
+    border: 4px solid #6d5843;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    cursor: crosshair;
+    touch-action: none;
+}
+
+/* パレット */
+.palette-container {
+    display: flex;
+    gap: 8px;
+    background: #f4eee1;
+    padding: 8px 12px;
+    border-radius: 20px;
+    border: 2px solid #9c826b;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.color-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+}
+
+.color-dot:active, .color-dot.selected {
+    transform: scale(1.2);
+    border-color: #4a3b32;
+}
+
+.eraser-btn {
+    background-color: #fff; color: #4a3b32; border: 2px solid #9c826b;
+    border-bottom: 3px solid #7d6550; padding: 4px 10px; font-size: 12px;
+    border-radius: 12px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 3px;
+}
+.eraser-btn.selected { background-color: #ffeaa7; border-color: #e67e22; transform: scale(1.05); }
+.tool-select { padding: 4px 8px; font-size: 13px; border: 2px solid #9c826b; border-radius: 8px; background: white; font-weight: bold; color: #4a3b32; }
+
+/* 完了した絵・お題の表示 */
+.reference-card {
+    background: white;
+    border: 3px solid #6d5843;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    max-width: 420px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.reference-image {
+    width: 320px;
+    height: 320px;
+    object-fit: contain;
+    border: 1px solid #ccc;
+    background: white;
+    border-radius: 6px;
+}
+
+.reference-text {
+    font-size: 22px;
+    font-weight: 800;
+    color: #d35400;
+    margin-top: 10px;
+}
+
+/* 全員待機画面のプレイヤー提出状態 */
+.waiting-status-list {
+    background: #f5efe6;
+    border: 2px dashed #9c826b;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 400px;
+    text-align: left;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5dec9;
+    font-weight: bold;
+}
+
+.status-row:last-child {
+    border-bottom: none;
+}
+
+.status-badge {
+    padding: 2px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+.status-badge.pending {
+    background-color: #ffeaa7;
+    color: #d35400;
+}
+
+.status-badge.done {
+    background-color: #d4efdf;
+    color: #196f3d;
+}
+
+/* 発表（ショーケース）画面 */
+.showcase-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.showcase-chain {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.chain-item {
+    background: white;
+    border: 3px solid #6d5843;
+    border-radius: 12px;
+    padding: 15px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    text-align: center;
+    position: relative;
+}
+
+.chain-item::after {
+    content: "↓";
+    font-size: 24px;
+    font-weight: bold;
+    color: #9c826b;
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.chain-item:last-child::after {
+    display: none;
+}
+
+.chain-item-label {
+    font-size: 11px;
+    color: #7f8c8d;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.chain-item-image {
+    width: 100%;
+    max-height: 350px;
+    object-fit: contain;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: white;
+}
+
+.chain-item-text {
+    font-size: 20px;
+    font-weight: 800;
+    color: #5c4033;
+}
+
+.showcase-nav {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    justify-content: center;
+    align-items: center;
+}
+
+.showcase-info {
+    font-weight: bold;
+    font-size: 16px;
+    color: #7f6e64;
+}
+
+/* ローディング・待機中のアニメーション */
+.waiting-loader {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    border: 5px solid #bdc3c7;
+    border-radius: 50%;
+    border-top-color: #e67e22;
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
