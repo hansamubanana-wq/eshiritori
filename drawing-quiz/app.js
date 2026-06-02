@@ -14,13 +14,76 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// お題ワードバンク
-const wordBank = [
-    "ねこ", "いぬ", "くるま", "ひこうき", "りんご", "バナナ", "すいか", "ドラえもん", 
-    "アンパンマン", "おばけ", "ゆきだるま", "ペンギン", "ひまわり", "さくらんぼ", 
-    "ハンバーガー", "ピザ", "タコ", "イカ", "キリン", "ぞう", "さかな", "チューリップ",
-    "オムライス", "おにぎり", "テレビ", "メガネ", "ぼうし", "かさ", "えんぴつ", "くつ"
+// お題ワードリスト（動物、食べ物、乗り物、道具、自然、キャラクター）
+const nouns = [
+    "ねこ", "いぬ", "うさぎ", "パンダ", "コアラ", "キリン", "ぞう", "らいおん", "とら", "くま",
+    "さる", "ゴリラ", "ぺんぎん", "いるか", "くじら", "さめ", "たこ", "いか", "かに", "かえる",
+    "かめ", "へび", "きつね", "たぬき", "りす", "ハムスター", "ひよこ", "にわとり", "すずめ", "つばめ",
+    "カラス", "はと", "ペンギン", "ラッコ", "アシカ", "トナカイ", "うま", "うし", "ぶた", "ひつじ",
+    "やぎ", "ねずみ", "こうもり", "カンガルー", "アルパカ", "カマキリ", "カブトムシ", "クワガタ", "ちょうちょ", "あり",
+    "りんご", "バナナ", "いちご", "すいか", "メロン", "ぶどう", "みかん", "もも", "くり", "かき",
+    "レモン", "パイナップル", "さくらんぼ", "トマト", "なす", "にんじん", "きゅうり", "じゃがいも", "たまねぎ", "かぼちゃ",
+    "キャベツ", "レタス", "ピーマン", "とうもろこし", "きのこ", "おにぎり", "おすし", "ラーメン", "うどん", "そば",
+    "カレーライス", "オムライス", "ハンバーグ", "ステーキ", "パスタ", "ピザ", "ハンバーガー", "サンドイッチ", "ぎょうざ", "たこやき",
+    "お好み焼き", "やきとり", "てんぷら", "トースト", "クロワッサン", "ケーキ", "ドーナツ", "プリン", "パフェ", "アイスクリーム",
+    "くるま", "パトカー", "きゅうきゅうしゃ", "しょうぼうしゃ", "トラック", "バス", "タクシー", "じてんしゃ", "バイク", "でんしゃ",
+    "しんかんせん", "きかんしゃ", "ひこうき", "ヘリコプター", "ロケット", "せんすいかん", "ふね", "ヨット", "UFO",
+    "テレビ", "パソコン", "スマホ", "カメラ", "とけい", "めがね", "ぼうし", "くつ", "かさ", "えんぴつ",
+    "けしゴム", "ハサミ", "ノート", "ほん", "カバン", "さいふ", "かぎ", "つくえ", "いす", "ベッド",
+    "ソファー", "コップ", "おさら", "スプーン", "フォーク", "おはし", "はぶらし", "せっけん", "かがみ", "ふうせん",
+    "ボール", "にんぎょう", "ギター", "ピアノ", "たいこ", "バイオリン", "ラジコン", "トランプ", "ブロック", "クレヨン",
+    "たいよう", "つき", "ほし", "くも", "にじ", "あめ", "ゆき", "かみなり", "やま", "かわ",
+    "うみ", "もり", "はな", "さくら", "ひまわり", "チューリップ", "おしろ", "いえ", "がっこう", "こうえん",
+    "ドラえもん", "アンパンマン", "おばけ", "がいこつ", "まじょ", "にんじゃ", "お殿様", "お姫様", "宇宙人", "サンタクロース",
+    "ゆきだるま", "かかし", "マーメイド", "ロボット", "おまわりさん", "はいしゃさん", "しょうぼうし", "せんせい", "あかちゃん", "ピエロ"
 ];
+
+// 形容詞・動作リスト
+const adjectives = [
+    "おこっている", "ないている", "わらっている", "うたっている", "おどっている",
+    "はしっている", "およいでいる", "そらをとぶ", "ねむっている", "たべている",
+    "のんでいる", "あそんでいる", "べんきょうする", "おめかしした", "サングラスをかけた",
+    "ぼうしをかぶった", "ドレスを着た", "宇宙服を着た", "ぬれている", "こおっている",
+    "もえている", "ひかりにかがやく", "きょだいな", "ちいさな", "カラフルな",
+    "しかくい", "まるい", "ながい", "ふとった", "やせた",
+    "サーフィンする", "スケボーにのる", "おねだりする", "のんびりした", "いそいでいる",
+    "おしゃれな", "びっくりした", "てれちゃう", "たくましい", "よわよわしい"
+];
+
+// 場所・シチュエーションリスト
+const situations = [
+    "うちゅうで", "うみのなかで", "さばくで", "くものうえで", "ジャングルで",
+    "おふろで", "ベッドのうえで", "がっこうで", "ゆうえんちで", "おさらのうえで",
+    "フライパンのうえで", "れいぞうこのなかで", "かざんのなかで", "げつめんで", "むじんとうで",
+    "ゆきやまのなかで", "としょかんで", "トイレのなかで", "おしろのなかで", "ゆうやけのなかで"
+];
+
+// 約12万種類のお題を難易度別（かんたん、ふつう、むずかしい）に自動生成
+function generatePrompt() {
+    const rand = Math.random();
+    let difficulty = "easy";
+    let text = "";
+    let answer = "";
+
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    answer = noun;
+
+    if (rand < 0.25) {
+        difficulty = "easy";
+        text = noun;
+    } else if (rand < 0.65) {
+        difficulty = "normal";
+        const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+        text = adj + noun;
+    } else {
+        difficulty = "hard";
+        const sit = situations[Math.floor(Math.random() * situations.length)];
+        const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+        text = sit + adj + noun;
+    }
+
+    return { text, answer, difficulty };
+}
 
 let roomId = "";
 let myPlayerName = "";
@@ -239,12 +302,13 @@ function startNextRound() {
     }
 
     const nextDrawerId = order[curIdx % order.length];
-    const randomWord = wordBank[Math.floor(Math.random() * wordBank.length)];
+    const prompt = generatePrompt();
     const timeLimit = Date.now() + 60 * 1000; // 60秒
 
     const updates = {
         drawerId: nextDrawerId,
-        currentWord: randomWord,
+        currentWord: prompt.text,
+        answerWord: prompt.answer,
         timerEnd: timeLimit,
         canvasData: ""
     };
@@ -257,7 +321,8 @@ function startNextRound() {
     update(ref(db, 'rooms-quiz/' + roomId), updates).then(() => {
         // システムメッセージ送信
         const nextDrawerName = roomState.players[nextDrawerId].name;
-        sendSystemMessage(`【第 ${curIdx + 1} ラウンド】${nextDrawerName} さんがお絵描きする番です！`);
+        const diffText = prompt.difficulty === "easy" ? "かんたん" : prompt.difficulty === "normal" ? "ふつう" : "むずかしい";
+        sendSystemMessage(`【第 ${curIdx + 1} ラウンド】${nextDrawerName} さんがお絵描きする番です！（難易度：${diffText}）`);
     });
 }
 
@@ -326,7 +391,7 @@ function syncGameFlow() {
         
         // お題の文字数を表示
         wordBox.className = "secret-word-guesser";
-        wordBox.innerText = `${roomState.currentWord.length}文字`;
+        wordBox.innerText = `${(roomState.answerWord || roomState.currentWord).length}文字`;
 
         if (roomState.canvasData) {
             liveImg.src = roomState.canvasData;
@@ -415,7 +480,7 @@ window.submitGuess = function() {
     }
 
     const normalizedGuess = kataToHira(guessText);
-    const normalizedTarget = kataToHira(roomState.currentWord);
+    const normalizedTarget = kataToHira(roomState.answerWord || roomState.currentWord);
 
     if (normalizedGuess === normalizedTarget) {
         // 正解！
