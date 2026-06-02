@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>普通の絵しりとり</title>
+    <title>リアルタイム絵しりとり</title>
     <style>
         /* 全体：スケッチブック風の温かみのある背景 */
         body {
@@ -145,13 +145,18 @@
             align-items: center;
             gap: 12px;
         }
-        #canvas {
+        #canvas, .live-canvas-display {
             border: 4px solid #6d5843;
             border-radius: 4px;
             background-color: #fff;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             cursor: crosshair;
             touch-action: none;
+        }
+        .live-canvas-display {
+            width: 380px;
+            height: 380px;
+            object-fit: contain;
         }
 
         .palette-container {
@@ -207,7 +212,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // 💡 君の提供してくれたFirebase接続情報に完全書き換え済み！
         const firebaseConfig = {
             apiKey: "AIzaSyA1JE1-7hPGNeFCQn3egNwmgmViy79UYHE",
             authDomain: "eshiritori-64c6c.firebaseapp.com",
@@ -226,7 +230,7 @@
         let myPlayerId = "";
         let isHost = false;
         let roomState = null;
-        let timerInterval;
+        let sendCanvasTimeout = null; // リアルタイム送信用タイマー
 
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -278,7 +282,8 @@
                 players: {
                     [myPlayerId]: { name: myPlayerName, isHost: true }
                 },
-                gameData: []
+                gameData: [],
+                canvasData: "" // リアルタイム描画データ用初期化
             };
 
             set(roomRef, initialData).then(() => {
@@ -363,7 +368,7 @@
 
             if (currentTurnPlayerId === myPlayerId) {
                 if (document.getElementById('screen-draw').classList.contains('active') || document.getElementById('screen-answer').classList.contains('active')) {
-                    // nop
+                    // 描画中、回答入力中は画面を維持
                 } else {
                     changeScreen('screen-turn');
                     document.getElementById('turn-message').innerText = `あなたの番です！`;
@@ -371,6 +376,15 @@
             } else {
                 changeScreen('screen-wait-turn');
                 document.getElementById('wait-message').innerText = `いまは ${currentTurnPlayerName} さんが描いています...`;
+                
+                // 💡 待機中の画面にリアルタイム生中継の画像を表示
+                const liveImg = document.getElementById('live-stream-view');
+                if (roomState.canvasData) {
+                    liveImg.src = roomState.canvasData;
+                    liveImg.style.display = 'block';
+                } else {
+                    liveImg.style.display = 'none'; // まだ描いてないとき
+                }
             }
         }
 
@@ -412,10 +426,12 @@
                     attachPreviewEvents(node, i);
                 } else if (i === curIdx) {
                     node.classList.add('active-now');
+                    // 💡 タイムラインのアイコンの中にも、リアルタイム生中継画像を埋め込む！
+                    let miniLiveSrc = roomState.canvasData || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><text x="30" y="50" font-size="24">✍</text></svg>';
                     node.innerHTML = `
                         <div class="node-pname" style="color:#e67e22;">★ ${pName}</div>
-                        <div style="font-size:24px; margin:20px 0; color:#e67e22;">✍</div>
-                        <div class="node-chars">描画中</div>
+                        <img class="node-img" src="${miniLiveSrc}" style="border-color:#e67e22;">
+                        <div class="node-chars" style="color:#e67e22; font-weight:bold;">生中継中!</div>
                     `;
                 } else {
                     node.classList.add('blank');
@@ -476,30 +492,30 @@
             clearCanvas();
             setupCanvasEvents();
             
-            let timeLeft = 60;
-            document.getElementById('time-left').innerText = timeLeft;
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                document.getElementById('time-left').innerText = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    alert('時間切れ！');
-                    finishDrawing();
-                }
-            }, 1000);
+            // 💡 制限時間に関わるタイマー処理をすべて削除しました！
         }
 
         window.clearCanvas = function() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            syncCanvasToFirebase(); // 消した状態も即同期
         }
 
         window.finishDrawing = function() {
-            clearInterval(timerInterval);
             changeScreen('screen-answer');
             document.getElementById('correct-answer').value = '';
+        }
+
+        // 💡 描いている途中のキャンバスをFirebaseへ高速同期する関数
+        function syncCanvasToFirebase() {
+            if (sendCanvasTimeout) clearTimeout(sendCanvasTimeout);
+            
+            // 負荷軽減のため、0.1秒（100ms）間隔で最新の絵を送信
+            sendCanvasTimeout = setTimeout(() => {
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.5); // 軽量化のためjpeg圧縮
+                update(ref(db, 'rooms/' + roomId), { canvasData: dataUrl });
+            }, 100);
         }
 
         window.submitAnswer = function() {
@@ -521,7 +537,8 @@
             const nextIdx = roomState.currentIndex + 1;
             update(ref(db, 'rooms/' + roomId), {
                 gameData: gameDataList,
-                currentIndex: nextIdx
+                currentIndex: nextIdx,
+                canvasData: "" // 💡 次の人に交代するので、生中継用データをリセット
             });
         }
 
@@ -610,7 +627,8 @@
                 gameData: [],
                 startChar: startChar,
                 endChar: endChar,
-                playersOrder: shuffledOrder
+                playersOrder: shuffledOrder,
+                canvasData: ""
             });
         }
 
@@ -646,8 +664,20 @@
                 ctx.lineWidth = currentLineWidth; ctx.lineCap = 'round';
                 ctx.strokeStyle = isEraserMode ? '#ffffff' : currentColor;
                 ctx.lineTo(pos.x, pos.y); ctx.stroke();
+                
+                // 💡 描画中にFirebaseへデータをリアルタイム送信
+                syncCanvasToFirebase();
             };
-            canvas.onmouseup = canvas.onmouseleave = canvas.ontouchend = function() { isDrawing = false; };
+            canvas.onmouseup = canvas.onmouseleave = canvas.ontouchend = function() { 
+                if (isDrawing) {
+                    isDrawing = false; 
+                    syncCanvasToFirebase(); // 描き終わり時にも確定送信
+                }
+            };
+        }
+
+        function kataToHira(str) {
+            return str.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60));
         }
     </script>
 </head>
@@ -688,13 +718,17 @@
 
     <div id="screen-wait-turn" class="screen">
         <h2 id="wait-message" style="color: #6d5843;">他のプレイヤーが描き終わるのを待っています...</h2>
-        <div style="font-size: 40px; margin: 20px;">☕🎨</div>
-        <p>上のタイムラインがリアルタイムで更新されるので、進み具合を見ててね！</p>
+        
+        <div style="margin: 15px 0; font-weight: bold; color: #e67e22; font-size:16px;">📺 お絵描きリアルタイム生中継モニター</div>
+        <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+            <img id="live-stream-view" class="live-canvas-display" src="" style="display:none;">
+        </div>
+        <p>上のキャンバスとタイムラインが、描かれている瞬間にリアルタイムで動くよ！</p>
     </div>
 
     <div id="screen-turn" class="screen">
         <h2 style="font-size: 26px; color: #d35400;">あなたの番です！</h2>
-        <p>準備ができたらボタンを押して、お絵描きを始めてね！</p>
+        <p>制限時間はないので、じっくり考えて準備ができたらお絵描きを始めてね！</p>
         <button onclick="startDrawing()" style="font-size: 20px; padding: 12px 40px;">お絵描きを始める</button>
     </div>
 
@@ -702,7 +736,7 @@
         <div class="game-main-layout">
             <div>
                 <h2 id="drawer-name">キャンバスに描いて！</h2>
-                <div style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">残り時間: <span id="time-left">60</span>秒</div>
+                <div style="font-size: 14px; color: #e67e22; font-weight: bold; margin-bottom: 15px;">※ いま描いている線は全員に生中継されています！</div>
                 <div style="margin-bottom: 15px;">
                     <button onclick="clearCanvas()" style="background-color: #7f8c8d; border-color:#626d6e; margin-right:10px;">全部消す</button>
                     <button onclick="finishDrawing()" style="background-color: #27ae60; border-color: #1e8449;">描けた！</button>
