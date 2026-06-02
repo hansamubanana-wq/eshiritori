@@ -230,7 +230,7 @@
         let myPlayerId = "";
         let isHost = false;
         let roomState = null;
-        let sendCanvasTimeout = null; // リアルタイム送信用タイマー
+        let sendCanvasTimeout = null;
 
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -255,9 +255,17 @@
             
             const roomRef = ref(db, 'rooms/' + roomId);
             get(roomRef).then((snapshot) => {
+                // 💡 過去のゲームデータが残っているかチェック
                 if (snapshot.exists()) {
-                    isHost = false;
-                    joinRoom();
+                    let data = snapshot.val();
+                    // 終わっている、またはプレイ中の古い部屋なら、最初の人が自動的にリセットして再利用
+                    if (data.status === "result" || data.status === "playing") {
+                        isHost = true;
+                        createRoom(); 
+                    } else {
+                        isHost = false;
+                        joinRoom();
+                    }
                 } else {
                     isHost = true;
                     createRoom();
@@ -283,7 +291,7 @@
                     [myPlayerId]: { name: myPlayerName, isHost: true }
                 },
                 gameData: [],
-                canvasData: "" // リアルタイム描画データ用初期化
+                canvasData: ""
             };
 
             set(roomRef, initialData).then(() => {
@@ -298,13 +306,10 @@
                 const roomRef = ref(db, 'rooms/' + roomId);
                 get(roomRef).then((snapshot) => {
                     let data = snapshot.val();
-                    if(data.status !== "waiting") {
-                        alert("すでにゲームが始まっています！");
-                        location.reload();
-                        return;
-                    }
                     let order = data.playersOrder || [];
-                    order.push(myPlayerId);
+                    if (!order.includes(myPlayerId)) {
+                        order.push(myPlayerId);
+                    }
                     update(ref(db, 'rooms/' + roomId), { playersOrder: order });
                 });
                 
@@ -324,12 +329,16 @@
                     document.getElementById('lobby-room-title').innerText = `部屋パスワード: ${roomId}`;
                     const listEl = document.getElementById('lobby-players-list');
                     listEl.innerHTML = "";
-                    data.playersOrder.forEach(pId => {
-                        const p = data.players[pId];
-                        const li = document.createElement('div');
-                        li.innerText = `・ ${p.name} ${p.isHost ? '👑(ホスト)' : ''}`;
-                        listEl.appendChild(li);
-                    });
+                    if (data.playersOrder && data.players) {
+                        data.playersOrder.forEach(pId => {
+                            const p = data.players[pId];
+                            if (p) {
+                                const li = document.createElement('div');
+                                li.innerText = `・ ${p.name} ${p.isHost ? '👑(ホスト)' : ''}`;
+                                listEl.appendChild(li);
+                            }
+                        });
+                    }
                     document.getElementById('start-game-btn').style.display = isHost ? 'inline-block' : 'none';
                     changeScreen('screen-lobby');
                 }
@@ -368,7 +377,7 @@
 
             if (currentTurnPlayerId === myPlayerId) {
                 if (document.getElementById('screen-draw').classList.contains('active') || document.getElementById('screen-answer').classList.contains('active')) {
-                    // 描画中、回答入力中は画面を維持
+                    // 入力画面中は維持
                 } else {
                     changeScreen('screen-turn');
                     document.getElementById('turn-message').innerText = `あなたの番です！`;
@@ -377,13 +386,12 @@
                 changeScreen('screen-wait-turn');
                 document.getElementById('wait-message').innerText = `いまは ${currentTurnPlayerName} さんが描いています...`;
                 
-                // 💡 待機中の画面にリアルタイム生中継の画像を表示
                 const liveImg = document.getElementById('live-stream-view');
                 if (roomState.canvasData) {
                     liveImg.src = roomState.canvasData;
                     liveImg.style.display = 'block';
                 } else {
-                    liveImg.style.display = 'none'; // まだ描いてないとき
+                    liveImg.style.display = 'none';
                 }
             }
         }
@@ -415,7 +423,7 @@
                 const node = document.createElement('div');
                 node.className = 'roadmap-node';
                 const pId = order[i % order.length];
-                const pName = roomState.players[pId].name;
+                const pName = roomState.players[pId] ? roomState.players[pId].name : "ゲスト";
 
                 if (i < curIdx && gameDataList[i]) {
                     node.innerHTML = `
@@ -426,7 +434,7 @@
                     attachPreviewEvents(node, i);
                 } else if (i === curIdx) {
                     node.classList.add('active-now');
-                    // 💡 タイムラインのアイコンの中にも、リアルタイム生中継画像を埋め込む！
+                    // 💡 文字はみ出しバグを修正（ダブルクォーテーションを綺麗に閉じました）
                     let miniLiveSrc = roomState.canvasData || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><text x="30" y="50" font-size="24">✍</text></svg>';
                     node.innerHTML = `
                         <div class="node-pname" style="color:#e67e22;">★ ${pName}</div>
@@ -465,9 +473,11 @@
             function showPreview(e) {
                 e.preventDefault();
                 const data = gameDataList[index];
-                previewImg.src = data.image;
-                previewName.innerText = `${index + 1}番手: ${data.player} の絵 (${data.answer.length}文字)`;
-                overlay.style.display = 'flex';
+                if (data) {
+                    previewImg.src = data.image;
+                    previewName.innerText = `${index + 1}番手: ${data.player} の絵 (${data.answer.length}文字)`;
+                    overlay.style.display = 'flex';
+                }
             }
             function hidePreview() { overlay.style.display = 'none'; }
 
@@ -491,15 +501,13 @@
 
             clearCanvas();
             setupCanvasEvents();
-            
-            // 💡 制限時間に関わるタイマー処理をすべて削除しました！
         }
 
         window.clearCanvas = function() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            syncCanvasToFirebase(); // 消した状態も即同期
+            syncCanvasToFirebase();
         }
 
         window.finishDrawing = function() {
@@ -507,15 +515,14 @@
             document.getElementById('correct-answer').value = '';
         }
 
-        // 💡 描いている途中のキャンバスをFirebaseへ高速同期する関数
+        // 💡 描画同期のウェイトを30ms（0.03秒）まで高速化！
         function syncCanvasToFirebase() {
             if (sendCanvasTimeout) clearTimeout(sendCanvasTimeout);
             
-            // 負荷軽減のため、0.1秒（100ms）間隔で最新の絵を送信
             sendCanvasTimeout = setTimeout(() => {
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.5); // 軽量化のためjpeg圧縮
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.4); // 高速同期のため画質を少し軽量化(40%)
                 update(ref(db, 'rooms/' + roomId), { canvasData: dataUrl });
-            }, 100);
+            }, 30);
         }
 
         window.submitAnswer = function() {
@@ -538,7 +545,7 @@
             update(ref(db, 'rooms/' + roomId), {
                 gameData: gameDataList,
                 currentIndex: nextIdx,
-                canvasData: "" // 💡 次の人に交代するので、生中継用データをリセット
+                canvasData: ""
             });
         }
 
@@ -665,13 +672,12 @@
                 ctx.strokeStyle = isEraserMode ? '#ffffff' : currentColor;
                 ctx.lineTo(pos.x, pos.y); ctx.stroke();
                 
-                // 💡 描画中にFirebaseへデータをリアルタイム送信
                 syncCanvasToFirebase();
             };
             canvas.onmouseup = canvas.onmouseleave = canvas.ontouchend = function() { 
                 if (isDrawing) {
                     isDrawing = false; 
-                    syncCanvasToFirebase(); // 描き終わり時にも確定送信
+                    syncCanvasToFirebase();
                 }
             };
         }
@@ -700,7 +706,7 @@
         <div style="margin-bottom: 15px;">
             部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: seiryo123" style="width: 250px;">
         </div>
-        <p style="font-size: 13px; color: #7f8c8d; max-width: 400px; margin: 0 auto 15px;">※同じパスワードを入力した人と自動的に同じ部屋に入ります。誰もいないパスワードなら新しい部屋を自動で作るよ！</p>
+        <p style="font-size: 13px; color: #7f8c8d; max-width: 400px; margin: 0 auto 15px;">※同じパスワードを入力した人と自動的に同じ部屋に入ります。誰もいない、または終わった部屋のパスワードなら新しい部屋をリセットして作るよ！</p>
         <button onclick="connectLobby()">部屋に入る / 作る</button>
     </div>
 
@@ -727,7 +733,7 @@
     </div>
 
     <div id="screen-turn" class="screen">
-        <h2 style="font-size: 26px; color: #d35400;">あなたの番です！</h2>
+        <h2 id="turn-message" style="font-size: 26px; color: #d35400;">あなたの番です！</h2>
         <p>制限時間はないので、じっくり考えて準備ができたらお絵描きを始めてね！</p>
         <button onclick="startDrawing()" style="font-size: 20px; padding: 12px 40px;">お絵描きを始める</button>
     </div>
