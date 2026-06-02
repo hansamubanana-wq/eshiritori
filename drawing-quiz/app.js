@@ -31,6 +31,7 @@ let roomState = null;
 let sendCanvasTimeout = null;
 let countdownInterval = null;
 let isTransitioningRound = false;
+let lastDrawnRoundIndex = -1;
 
 // アカウント名自動入力とURLクエリによる自動入室
 document.addEventListener("DOMContentLoaded", () => {
@@ -145,6 +146,9 @@ function listenToRoom() {
         if (roomState && data.status === "playing") {
             if (roomState.status !== "playing" || roomState.currentIndex !== data.currentIndex || roomState.drawerId !== data.drawerId) {
                 isTransitioningRound = false;
+            }
+            if (roomState.status !== "playing") {
+                lastDrawnRoundIndex = -1;
             }
         }
         
@@ -295,6 +299,15 @@ function syncGameFlow() {
         wordBox.className = "secret-word-display";
         wordBox.innerText = `お題：${roomState.currentWord}`;
 
+        // 新しいラウンドの開始時のみキャンバスを白でクリア
+        if (lastDrawnRoundIndex !== roomState.currentIndex) {
+            lastDrawnRoundIndex = roomState.currentIndex;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            syncCanvasToFirebase();
+        }
+
         // 描画イベントの登録
         setupCanvasEvents();
     } else {
@@ -306,9 +319,9 @@ function syncGameFlow() {
         canvasEl.style.display = "none";
         liveImg.style.display = "block";
         
-        // お題を伏せ字で表示（文字数ヒント）
+        // お題の文字数を表示
         wordBox.className = "secret-word-guesser";
-        wordBox.innerText = "〇".repeat(roomState.currentWord.length);
+        wordBox.innerText = `${roomState.currentWord.length}文字`;
 
         if (roomState.canvasData) {
             liveImg.src = roomState.canvasData;
