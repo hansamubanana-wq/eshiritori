@@ -30,6 +30,7 @@ let isHost = false;
 let roomState = null;
 let sendCanvasTimeout = null;
 let countdownInterval = null;
+let isTransitioningRound = false;
 
 // アカウント名自動入力とURLクエリによる自動入室
 document.addEventListener("DOMContentLoaded", () => {
@@ -139,6 +140,14 @@ function listenToRoom() {
     onValue(roomRef, (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
+        
+        // 新しいラウンドやステータス変更を検知して遷移フラグをリセット
+        if (roomState && data.status === "playing") {
+            if (roomState.status !== "playing" || roomState.currentIndex !== data.currentIndex || roomState.drawerId !== data.drawerId) {
+                isTransitioningRound = false;
+            }
+        }
+        
         roomState = data;
 
         if (data.status === "waiting") {
@@ -357,11 +366,14 @@ function syncTimer() {
 
 // タイムオーバー時の処理
 function handleTimeOver() {
+    if (isTransitioningRound) return;
+    
     // ホストまたは描き手が次のラウンドへの移行を指示
     if (myPlayerId === roomState.drawerId) {
+        isTransitioningRound = true;
         sendSystemMessage(`時間切れ！正解は「${roomState.currentWord}」でした。`, "system");
         
-        // 1秒待ってから次のターンへ
+        // 1.5秒待ってから次のターンへ
         setTimeout(() => {
             const nextIdx = roomState.currentIndex + 1;
             update(ref(db, 'rooms-quiz/' + roomId), { currentIndex: nextIdx }).then(() => {
@@ -418,6 +430,8 @@ window.submitGuess = function() {
 
 // 全員が正解したかの判定
 function checkAllGuessed() {
+    if (isTransitioningRound) return;
+
     get(ref(db, 'rooms-quiz/' + roomId)).then((snapshot) => {
         const data = snapshot.val();
         let allCorrect = true;
@@ -428,12 +442,13 @@ function checkAllGuessed() {
             }
         });
 
-        if (allCorrect && myPlayerId === data.drawerId) {
+        if (allCorrect) {
+            isTransitioningRound = true;
             sendSystemMessage("全員正解しました！次のラウンドに進みます。", "system");
-            clearInterval(countdownInterval);
+            if (countdownInterval) clearInterval(countdownInterval);
             
             setTimeout(() => {
-                const nextIdx = roomState.currentIndex + 1;
+                const nextIdx = data.currentIndex + 1;
                 update(ref(db, 'rooms-quiz/' + roomId), { currentIndex: nextIdx }).then(() => {
                     startNextRound();
                 });
