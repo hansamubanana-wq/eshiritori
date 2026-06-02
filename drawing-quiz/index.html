@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>スピードお絵描きクイズ</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="app.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <!-- セットアップ画面 -->
+    <div id="screen-setup" class="screen active">
+        <h1>✏️ スピードお絵描きクイズ</h1>
+        <p>一人がお絵描きし、他のプレイヤーが答えを当てるリアルタイム対戦クイズゲーム！</p>
+        <div style="margin-bottom: 15px;">
+            あなたの名前：<br><input type="text" id="user-name" placeholder="プレイヤー名" style="width: 250px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: quiz123" style="width: 250px;">
+        </div>
+        <p style="font-size: 13px; color: #7f8c8d; max-width: 400px; margin: 0 auto 15px;">※同じパスワードを入力した人と自動的に同じ部屋に入ります。誰もおらず終了した部屋なら新しくリセットして作ります！</p>
+        <button onclick="connectLobby()">部屋に入る / 作る</button>
+        <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:10px;">ゲーム選択に戻る</button>
+    </div>
+
+    <!-- 待機ロビー画面 -->
+    <div id="screen-lobby" class="screen">
+        <h2 id="lobby-room-title">部屋パスワード: --</h2>
+        <p>一緒に遊ぶ友達に上のパスワードを教えてあげてね。全員集まるまで待機！</p>
+        <div class="lobby-list">
+            <div style="font-weight: bold; border-bottom: 2px dashed #9c826b; padding-bottom: 5px; margin-bottom: 10px;">現在の参加メンバー：</div>
+            <div id="lobby-players-list"></div>
+        </div>
+        <br>
+        <button id="start-game-btn" onclick="hostStartGame()" style="display:none; background-color: #27ae60; border-color: #1e8449;">ゲームをスタートする！</button>
+        <p id="wait-host-msg" style="font-size: 14px; color:#7f8c8d;">※ホスト（一番最初に入った人）がスタートボタンを押すと始まります。</p>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="screen-game" class="screen">
+        <!-- 上部インフォメーションバー -->
+        <div class="game-info-bar">
+            <div style="font-weight: bold; font-size: 18px;" id="role-text">読み込み中...</div>
+            <div id="word-box" class="secret-word-display">読み込み中...</div>
+            <div class="timer-box">
+                <span>⏱️</span>
+                <span id="timer-value">60 秒</span>
+            </div>
+        </div>
+
+        <div class="quiz-main-layout">
+            <!-- 左：チャット & 解答エリア -->
+            <div class="chat-container">
+                <div id="chat-messages" class="chat-messages"></div>
+                <div id="guesser-controls" class="chat-input-area">
+                    <input type="text" id="guess-input" placeholder="回答を入力してEnter！" onkeydown="if(event.key === 'Enter') submitGuess()">
+                    <button onclick="submitGuess()">回答</button>
+                </div>
+                <div id="drawer-controls" class="chat-input-area" style="display:none; justify-content: center; align-items: center; background-color: #fce4d6;">
+                    <span style="font-size: 13px; color: #d35400; font-weight: bold;">あなたは描き手です。チャットは送信できません。</span>
+                </div>
+            </div>
+
+            <!-- 中央：キャンバス（お絵描きエリア） -->
+            <div class="canvas-container">
+                <!-- 描き手用パレット -->
+                <div id="canvas-palette" class="palette-container">
+                    <div class="color-dot selected" style="background-color: #4a3b32;" onclick="selectColor('#4a3b32', this)"></div>
+                    <div class="color-dot" style="background-color: #c0392b;" onclick="selectColor('#c0392b', this)"></div>
+                    <div class="color-dot" style="background-color: #e67e22;" onclick="selectColor('#e67e22', this)"></div>
+                    <div class="color-dot" style="background-color: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div>
+                    <div class="color-dot" style="background-color: #27ae60;" onclick="selectColor('#27ae60', this)"></div>
+                    <div class="color-dot" style="background-color: #2980b9;" onclick="selectColor('#2980b9', this)"></div>
+                    <div class="color-dot" style="background-color: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div>
+                    <button id="eraser-btn" class="eraser-btn" onclick="selectEraser()"><span>🧹</span>消しゴム</button>
+                    <select id="line-width-select" class="tool-select" onchange="selectWidth(this.value)">
+                        <option value="4">ふつうの太さ</option>
+                        <option value="10">ふとい線</option>
+                        <option value="20">かなり太い</option>
+                        <option value="40">超ぶっとい</option>
+                    </select>
+                    <button onclick="clearCanvas()" style="background-color: #7f8c8d; border-bottom: 3px solid #626d6e; padding: 4px 10px; font-size: 12px; border-radius: 12px; font-weight: bold; margin-left: 5px;">全消去</button>
+                </div>
+
+                <!-- キャンバス表示（描き手） -->
+                <canvas id="canvas" width="380" height="380"></canvas>
+                <!-- キャンバス表示（回答者用生中継イメージ） -->
+                <img id="live-stream-view" class="live-canvas-display" src="" style="display:none;">
+            </div>
+
+            <!-- 右：スコアボード -->
+            <div class="scoreboard-container">
+                <div class="scoreboard-title">👑 スコアボード</div>
+                <div id="score-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 結果画面 -->
+    <div id="screen-result" class="screen">
+        <h2>🎉 結果発表 🎉</h2>
+        <p>対戦おつかれさまでした！最終スコアは以下の通りです！</p>
+        
+        <div id="leaderboard-list" class="result-leaderboard"></div>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <button id="restart-game-btn" onclick="restartQuizGame()" style="display:none; background-color: #27ae60; border-color: #1e8449; font-size:18px;">もう一度遊ぶ（ホストのみ）</button>
+            <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:15px;">ゲーム選択に戻る</button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
