@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>マルチプレイお絵描き広場</title>
+    <title>お絵描きマルチプレイ広場</title>
     <link rel="stylesheet" href="style.css">
+    <script type="module" src="portal.js"></script>
 </head>
 <body>
 
@@ -14,44 +15,100 @@
         <p class="subtitle">みんなでつながってリアルタイムでお絵描きゲームを楽しもう！</p>
     </header>
 
-    <div class="games-grid">
-        <!-- 絵しりとり -->
-        <a href="eshiritori/index.html" class="game-card playable shiritori">
-            <span class="badge playable">遊べます！</span>
-            <div class="game-card-content">
-                <span class="game-icon">🍎</span>
-                <h2 class="game-title">リアルタイム絵しりとり</h2>
-                <p class="game-desc">前の人の描いた絵からリアルタイムでしりとりをつなげよう！お絵描き過程の生中継モニター付きで待っている時間も楽しめます。</p>
-            </div>
-            <div class="play-btn">あそびに行く！ ➔</div>
-        </a>
+    <div class="portal-main-layout">
+        <!-- 左側：ゲームグリッド -->
+        <div class="games-grid-wrapper">
+            <div class="games-grid">
+                <!-- 絵しりとり -->
+                <a href="eshiritori/index.html" class="game-card playable shiritori">
+                    <span class="badge playable">遊べます！</span>
+                    <div class="game-card-content">
+                        <span class="game-icon">🍎</span>
+                        <h2 class="game-title">リアルタイム絵しりとり</h2>
+                        <p class="game-desc">前の人の描いた絵からリアルタイムでしりとりをつなげよう！お絵描き過程の生中継モニター付きで待っている時間も楽しめます。</p>
+                    </div>
+                    <div class="play-btn">あそびに行く！ ➔</div>
+                </a>
 
-        <!-- お絵描きクイズ -->
-        <a href="drawing-quiz/index.html" class="game-card playable quiz">
-            <span class="badge playable">遊べます！</span>
-            <div class="game-card-content">
-                <span class="game-icon">✏️</span>
-                <h2 class="game-title">スピードお絵描きクイズ</h2>
-                <p class="game-desc">一人がお題に沿って絵を描き、他の全員がチャットで答えを推測します！一番早く正解を当てられた人が高得点！</p>
-            </div>
-            <div class="play-btn">あそびに行く！ ➔</div>
-        </a>
+                <!-- お絵描きクイズ -->
+                <a href="drawing-quiz/index.html" class="game-card playable quiz">
+                    <span class="badge playable">遊べます！</span>
+                    <div class="game-card-content">
+                        <span class="game-icon">✏️</span>
+                        <h2 class="game-title">スピードお絵描きクイズ</h2>
+                        <p class="game-desc">一人がお題に沿って絵を描き、他の全員がチャットで答えを推測します！一番早く正解を当てられた人が高得点！</p>
+                    </div>
+                    <div class="play-btn">あそびに行く！ ➔</div>
+                </a>
 
-        <!-- お絵描き伝言ゲーム -->
-        <a href="drawing-telephone/index.html" class="game-card playable telephone">
-            <span class="badge playable">遊べます！</span>
-            <div class="game-card-content">
-                <span class="game-icon">📞</span>
-                <h2 class="game-title">お絵描き伝言ゲーム</h2>
-                <p class="game-desc">最初のお題から「絵を描く ➔ 推測する ➔ 絵を描く ➔ 推測する」を交互に繰り返して、最後にどんな言葉に伝わったかを当てるゲーム！</p>
+                <!-- お絵描き伝言ゲーム -->
+                <a href="drawing-telephone/index.html" class="game-card playable telephone">
+                    <span class="badge playable">遊べます！</span>
+                    <div class="game-card-content">
+                        <span class="game-icon">📞</span>
+                        <h2 class="game-title">お絵描き伝言ゲーム</h2>
+                        <p class="game-desc">最初のお題から「絵を描く ➔ 推測する ➔ 絵を描く ➔ 推測する」を交互に繰り返して、最後にどんな言葉に伝わったかを当てるゲーム！</p>
+                    </div>
+                    <div class="play-btn">あそびに行く！ ➔</div>
+                </a>
             </div>
-            <div class="play-btn">あそびに行く！ ➔</div>
-        </a>
+        </div>
+
+        <!-- 右側：アカウント & フレンドサイドバー -->
+        <div class="portal-sidebar">
+            <!-- アカウントカード -->
+            <div class="sidebar-card" id="profile-area">
+                <div class="profile-setup" id="profile-setup-view">
+                    <h3>👤 アカウント作成</h3>
+                    <p style="font-size: 12px; color: #7f6e64; margin-top: 0;">名前を登録するとフレンド機能や招待機能が使えます！</p>
+                    <input type="text" id="profile-name-input" placeholder="名前を入力してください" style="width: 100%; box-sizing: border-box; margin-bottom: 12px; text-align: left;">
+                    <button id="register-profile-btn" style="width: 100%; padding: 8px 16px; font-size: 14px;">プロフィール登録</button>
+                </div>
+                <div class="profile-display" id="profile-display-view" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 12px; text-align: left;">
+                        <span style="font-size: 32px;">👤</span>
+                        <div>
+                            <h3 id="display-username" style="margin: 0; font-size: 18px; color: #5c4033;"></h3>
+                            <div class="friend-code-badge" id="display-friendcode-badge">
+                                コード: <span id="display-friendcode" style="font-weight: bold; font-family: monospace;"></span> 📋
+                            </div>
+                        </div>
+                    </div>
+                    <button id="edit-profile-btn" style="margin-top: 12px; background-color: #7f8c8d; border-bottom: 3px solid #626d6e; padding: 6px 12px; font-size: 11px; width: 100%;">名前を変更する</button>
+                </div>
+            </div>
+
+            <!-- フレンドリストカード -->
+            <div class="sidebar-card" id="friends-area" style="display: none;">
+                <div class="friends-list-container">
+                    <h3>👥 フレンドリスト</h3>
+                    <div class="add-friend-form">
+                        <input type="text" id="friend-code-input" placeholder="フレンドコードを追加" style="width: 100%; box-sizing: border-box; margin-bottom: 8px; font-size: 13px; text-align: left;">
+                        <button id="add-friend-btn" style="width: 100%; padding: 6px 12px; font-size: 13px; background-color: #3498db; border-color: #2980b9;">フレンドを追加</button>
+                    </div>
+                    <div id="friends-list" class="friends-list-scroll">
+                        <div style="color: #7f6e64; font-size: 12px; text-align: center; padding: 20px 0;">読み込み中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <footer>
         <p>© 2026 Multiplayer Paint Playground - Hansamubanana</p>
     </footer>
+</div>
+
+<!-- 招待通知ポップアップモーダル -->
+<div id="invite-modal" class="invite-notification-modal">
+    <div class="invite-modal-content">
+        <div style="font-size: 36px; animation: bounce 1.5s infinite;">✉️</div>
+        <div id="invite-modal-text" style="font-weight: bold; font-size: 16px; margin: 15px 0; color: #4a3b32; line-height: 1.4;">〇〇さんからゲームへの招待が届いています！</div>
+        <div class="invite-modal-buttons">
+            <button id="invite-accept-btn" style="background-color: #27ae60; border-color: #1e8449; padding: 8px 24px;">参加する</button>
+            <button id="invite-decline-btn" style="background-color: #c0392b; border-color: #962d22; padding: 8px 24px; margin-left: 10px;">ことわる</button>
+        </div>
+    </div>
 </div>
 
 </body>

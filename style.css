@@ -41,7 +41,7 @@ body {
     border-radius: 24px;
     box-shadow: var(--shadow-md);
     width: 100%;
-    max-width: 1000px;
+    max-width: 1100px;
     padding: 50px 40px;
     box-sizing: border-box;
     position: relative;
@@ -93,11 +93,143 @@ h1 span.logo-icon {
     font-weight: 600;
 }
 
+/* メインレイアウト：ゲームとサイドバーの2カラム */
+.portal-main-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 30px;
+    align-items: start;
+}
+
+.portal-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sidebar-card {
+    background: var(--bg-card);
+    border: 3px solid var(--border-color);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+}
+
+.sidebar-card h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #5c4033;
+    font-size: 16px;
+    font-weight: 800;
+    border-bottom: 2px dashed #9c826b;
+    padding-bottom: 6px;
+    text-align: left;
+}
+
+/* サイドバー内のフォーム要素 */
+.sidebar-card input[type="text"] {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 2px dashed #9c826b;
+    border-radius: 8px;
+    background-color: #fffdf9;
+    color: #4a3b32;
+    margin-bottom: 10px;
+}
+
+.sidebar-card button {
+    background-color: #e67e22;
+    color: white;
+    border: none;
+    border-bottom: 3px solid #d35400;
+    padding: 8px 16px;
+    font-size: 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.1s;
+}
+
+.sidebar-card button:active {
+    transform: translateY(2px);
+    border-bottom-width: 1px;
+}
+
+/* フレンドコード表示バッジ */
+.friend-code-badge {
+    font-size: 11px;
+    color: #7f6e64;
+    background-color: #f4eee1;
+    border: 1px solid #bdae96;
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin-top: 6px;
+    cursor: pointer;
+    display: inline-block;
+    transition: background-color 0.2s;
+}
+
+.friend-code-badge:hover {
+    background-color: #e8e1d3;
+}
+
+/* フレンドリストスクロールエリア */
+.friends-list-scroll {
+    max-height: 280px;
+    overflow-y: auto;
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.friend-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #d3c9b8;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.friend-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.online { background-color: #2ecc71; }
+.status-dot.offline { background-color: #bdc3c7; }
+.status-dot.playing { background-color: #9b59b6; }
+
+/* 招待ボタン */
+.friend-invite-btn {
+    background-color: #2ecc71 !important;
+    border-bottom: 2px solid #27ae60 !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    border-radius: 8px !important;
+    color: white !important;
+    margin-left: 5px;
+}
+
 /* ゲームカードグリッド */
 .games-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
 }
 
 /* カード共通 */
@@ -105,7 +237,7 @@ h1 span.logo-icon {
     background: var(--bg-card);
     border: 3px solid var(--border-color);
     border-radius: 20px;
-    padding: 30px;
+    padding: 25px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -117,40 +249,28 @@ h1 span.logo-icon {
     color: inherit;
 }
 
-/* アクティブなゲームカードのホバー効果 */
 .game-card.playable:hover {
-    transform: translateY(-8px);
+    transform: translateY(-6px);
     box-shadow: var(--shadow-hover);
     background-color: #ffffff;
 }
 
 .game-card.playable:hover .game-icon {
-    transform: scale(1.15) rotate(5deg);
+    transform: scale(1.1) rotate(3deg);
 }
 
-/* カードごとのグラデーションボーダー・発光 */
 .game-card.shiritori:hover { border-color: var(--color-orange); }
 .game-card.quiz:hover { border-color: var(--color-blue); }
 .game-card.telephone:hover { border-color: var(--color-purple); }
 
-/* 未実装カードのスタイル */
-.game-card.coming-soon {
-    opacity: 0.75;
-    cursor: default;
-    background-color: #f7f5f0;
-    border-style: dashed;
-}
-
-/* バッジ */
 .badge {
     position: absolute;
-    top: 15px;
-    right: 15px;
-    padding: 6px 12px;
-    font-size: 11px;
+    top: 12px;
+    right: 12px;
+    padding: 4px 10px;
+    font-size: 10px;
     font-weight: 800;
-    border-radius: 12px;
-    text-transform: uppercase;
+    border-radius: 10px;
     letter-spacing: 0.5px;
 }
 
@@ -160,54 +280,48 @@ h1 span.logo-icon {
     border: 1px solid var(--color-orange);
 }
 
-.badge.soon {
-    background-color: #f0f0f0;
-    color: #95a5a6;
-    border: 1px solid #bdc3c7;
-}
-
 .game-card-content {
-    margin-bottom: 25px;
+    margin-bottom: 20px;
 }
 
 .game-icon {
-    font-size: 56px;
-    margin-bottom: 15px;
+    font-size: 48px;
+    margin-bottom: 12px;
     display: inline-block;
     transition: transform 0.3s ease;
 }
 
 .game-title {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 800;
-    margin: 0 0 10px 0;
+    margin: 0 0 8px 0;
     color: #4a3b32;
+    text-align: left;
 }
 
 .game-desc {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-muted);
     line-height: 1.5;
     margin: 0;
+    text-align: left;
 }
 
-/* アクションボタン */
 .play-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     background-color: var(--color-orange);
     color: white;
     font-weight: 800;
-    font-size: 16px;
-    padding: 12px 24px;
+    font-size: 14px;
+    padding: 10px 20px;
     border-radius: 25px;
     border: none;
     border-bottom: 4px solid var(--color-orange-hover);
     cursor: pointer;
     transition: all 0.1s;
-    text-align: center;
 }
 
 .playable:hover .play-btn {
@@ -219,13 +333,6 @@ h1 span.logo-icon {
     border-bottom-width: 1px;
 }
 
-.play-btn.soon {
-    background-color: #bdc3c7;
-    border-bottom: 4px solid #95a5a6;
-    color: #ecf0f1;
-    cursor: not-allowed;
-}
-
 footer {
     text-align: center;
     margin-top: 45px;
@@ -233,20 +340,57 @@ footer {
     color: var(--text-muted);
 }
 
+/* 招待通知モーダル */
+.invite-notification-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0,0,0,0.6);
+    z-index: 99999;
+    justify-content: center;
+    align-items: center;
+}
+
+.invite-modal-content {
+    background: #fffdf9;
+    padding: 30px;
+    border-radius: 20px;
+    border: 4px solid var(--border-color);
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    max-width: 360px;
+    width: 90%;
+    animation: bounce 0.4s ease;
+}
+
+.invite-modal-buttons {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.invite-modal-buttons button {
+    border-radius: 20px;
+    font-size: 15px;
+}
+
 /* アニメーションキーフレーム */
 @keyframes bounce {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+    50% { transform: translateY(-8px); }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 880px) {
+    .portal-main-layout {
+        grid-template-columns: 1fr;
+    }
     .portal-container {
         padding: 30px 20px;
     }
     h1 {
         font-size: 32px;
-    }
-    .games-grid {
-        grid-template-columns: 1fr;
     }
 }

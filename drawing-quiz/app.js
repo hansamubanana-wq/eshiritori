@@ -25,10 +25,29 @@ const wordBank = [
 let roomId = "";
 let myPlayerName = "";
 let myPlayerId = "";
+let myUserId = localStorage.getItem('userId') || "";
 let isHost = false;
 let roomState = null;
 let sendCanvasTimeout = null;
 let countdownInterval = null;
+
+// アカウント名自動入力とURLクエリによる自動入室
+document.addEventListener("DOMContentLoaded", () => {
+    const savedName = localStorage.getItem('username');
+    if (savedName) {
+        document.getElementById('user-name').value = savedName;
+    }
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get('room');
+    if (roomParam) {
+        document.getElementById('room-id').value = roomParam;
+        if (savedName) {
+            setTimeout(() => {
+                window.connectLobby();
+            }, 300);
+        }
+    }
+});
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -88,6 +107,9 @@ function createRoom() {
     set(roomRef, initialData).then(() => {
         listenToRoom();
         changeScreen('screen-lobby');
+        if (myUserId) {
+            update(ref(db, `users/${myUserId}`), { status: "playing_quiz" });
+        }
     });
 }
 
@@ -105,6 +127,9 @@ function joinRoom() {
         
         listenToRoom();
         changeScreen('screen-lobby');
+        if (myUserId) {
+            update(ref(db, `users/${myUserId}`), { status: "playing_quiz" });
+        }
     });
 }
 
@@ -129,6 +154,9 @@ function listenToRoom() {
                         listEl.appendChild(li);
                     }
                 });
+            }
+            if (myUserId) {
+                document.getElementById('lobby-invite-btn').style.display = 'inline-block';
             }
             document.getElementById('start-game-btn').style.display = isHost ? 'inline-block' : 'none';
             changeScreen('screen-lobby');
@@ -529,4 +557,82 @@ function kataToHira(str) {
         .replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60)) // カタカナをひらがなに変換
         .replace(/\s+/g, "") // 空白を除去
         .toLowerCase();
+}
+
+// フレンドをロビーに招待する処理
+window.openLobbyInviteModal = function() {
+    const modal = document.getElementById('lobby-invite-modal');
+    modal.style.display = "flex";
+    
+    const listEl = document.getElementById('lobby-invite-friends-list');
+    listEl.innerHTML = '<div style="color: #7f8c8d; font-size: 12px; text-align: center;">読み込み中...</div>';
+    
+    if (!myUserId) {
+        listEl.innerHTML = '<div style="color: #7f8c8d; font-size: 12px; text-align: center;">アカウント未登録です。</div>';
+        return;
+    }
+    
+    get(ref(db, `users/${myUserId}/friends`)).then((snapshot) => {
+        const friends = snapshot.val();
+        if (!friends) {
+            listEl.innerHTML = '<div style="color: #7f8c8d; font-size: 12px; text-align: center;">フレンドがまだいません。</div>';
+            return;
+        }
+        
+        listEl.innerHTML = "";
+        const friendIds = Object.keys(friends);
+        
+        friendIds.forEach(friendId => {
+            get(ref(db, `users/${friendId}`)).then((fSnap) => {
+                const friendProfile = fSnap.val();
+                if (friendProfile) {
+                    const isOnline = friendProfile.status !== "offline" && (Date.now() - friendProfile.lastActive < 45000);
+                    
+                    const item = document.createElement('div');
+                    item.style.display = "flex";
+                    item.style.justifyContent = "space-between";
+                    item.style.alignItems = "center";
+                    item.style.padding = "8px 12px";
+                    item.style.background = "white";
+                    item.style.border = "1px solid #d3c9b8";
+                    item.style.borderRadius = "8px";
+                    item.style.fontSize = "13px";
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.innerText = friendProfile.name;
+                    nameSpan.style.fontWeight = "bold";
+                    nameSpan.style.color = "#4a3b32";
+                    
+                    const inviteBtn = document.createElement('button');
+                    inviteBtn.innerText = isOnline ? "招待" : "オフライン";
+                    inviteBtn.disabled = !isOnline;
+                    inviteBtn.style.padding = "4px 10px";
+                    inviteBtn.style.fontSize = "11px";
+                    inviteBtn.style.borderRadius = "12px";
+                    inviteBtn.style.backgroundColor = isOnline ? "#2ecc71" : "#bdc3c7";
+                    inviteBtn.style.borderBottom = isOnline ? "3px solid #27ae60" : "none";
+                    inviteBtn.style.color = "white";
+                    
+                    inviteBtn.onclick = () => {
+                        inviteBtn.innerText = "送信済";
+                        inviteBtn.disabled = true;
+                        inviteBtn.style.backgroundColor = "#7f8c8d";
+                        inviteBtn.style.borderBottom = "none";
+                        
+                        const inviteRef = push(ref(db, `users/${friendId}/invites`));
+                        set(inviteRef, {
+                            fromName: myPlayerName,
+                            roomId: roomId,
+                            gameType: "quiz",
+                            timestamp: Date.now()
+                        });
+                    };
+                    
+                    item.appendChild(nameSpan);
+                    item.appendChild(inviteBtn);
+                    listEl.appendChild(item);
+                }
+            });
+        });
+    });
 }
