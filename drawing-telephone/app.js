@@ -213,7 +213,8 @@ function submitTurnData(data) {
                     stepUpdates[`players/${pId}/submitted`] = false;
                 });
                 
-                if (nextStep >= 4) { // お題入力 -> 描く -> 推測 -> 描く の4ステップ終了時
+                const maxSteps = freshRoom.playersOrder.length;
+                if (nextStep >= maxSteps) { // 人数分のステップで終了
                     stepUpdates['status'] = "result";
                     stepUpdates['showcaseIndex'] = 0;
                 } else {
@@ -253,38 +254,34 @@ function syncGameFlow() {
     if (step === 0) {
         // ステップ0：お題を入力する
         changeScreen('screen-step-0');
+        const indicator = document.querySelector('#screen-step-0 .step-indicator');
+        if (indicator) indicator.innerText = `ステップ 1/${N} : 最初のお題を決めよう！`;
         document.getElementById('prompt-input').value = "";
     } 
-    else if (step === 1) {
-        // ステップ1：前の人が書いたお題を絵に描く
+    else if (step % 2 === 1) {
+        // 奇数ステップ：前の人が書いたテキスト（お題や推測）を絵に描く
         changeScreen('screen-step-1');
+        const indicator = document.querySelector('#screen-step-1 .step-indicator');
+        if (indicator) indicator.innerText = `ステップ ${step + 1}/${N} : お題を絵に描こう！`;
+        
         const canvasHolder = document.getElementById('canvas-holder-1');
         if (canvasHolder && canvas) canvasHolder.appendChild(canvas);
         
-        const targetPrompt = roomState.stepData.step_0[prevPlayerId];
+        const targetPrompt = roomState.stepData[`step_${step - 1}`][prevPlayerId];
         document.getElementById('step-1-prompt-display').innerText = `お題：${targetPrompt} (${prevPlayerName}さんより)`;
         
         clearCanvas();
         setupCanvasEvents();
     } 
-    else if (step === 2) {
-        // ステップ2：前の人が描いた絵が何か推測する
+    else {
+        // 偶数ステップ（>= 2）：前の人が描いた絵が何か推測する
         changeScreen('screen-step-2');
-        const targetImage = roomState.stepData.step_1[prevPlayerId];
+        const indicator = document.querySelector('#screen-step-2 .step-indicator');
+        if (indicator) indicator.innerText = `ステップ ${step + 1}/${N} : 絵が表す言葉を当てよう！`;
+        
+        const targetImage = roomState.stepData[`step_${step - 1}`][prevPlayerId];
         document.getElementById('step-2-image-display').src = targetImage;
         document.getElementById('guess-input').value = "";
-    } 
-    else if (step === 3) {
-        // ステップ3：前の人が推測した言葉を絵に描く
-        changeScreen('screen-step-3');
-        const canvasHolder = document.getElementById('canvas-holder-3');
-        if (canvasHolder && canvas) canvasHolder.appendChild(canvas);
-
-        const targetGuess = roomState.stepData.step_2[prevPlayerId];
-        document.getElementById('step-3-guess-display').innerText = `お題：${targetGuess} (${prevPlayerName}さんより)`;
-        
-        clearCanvas();
-        setupCanvasEvents();
     }
 }
 
@@ -294,10 +291,13 @@ function showWaitingScreen() {
     
     const indicatorText = document.getElementById('step-indicator-text');
     const step = roomState.currentStep;
-    if (step === 0) indicatorText.innerText = "みんながお題を書くのを待っています...";
-    else if (step === 1) indicatorText.innerText = "みんながお絵描きするのを待っています...";
-    else if (step === 2) indicatorText.innerText = "みんなが絵を推測するのを待っています...";
-    else if (step === 3) indicatorText.innerText = "みんなが最後のお絵描きをするのを待っています...";
+    if (step === 0) {
+        indicatorText.innerText = "みんながお題を書くのを待っています...";
+    } else if (step % 2 === 1) {
+        indicatorText.innerText = "みんながお絵描きするのを待っています...";
+    } else {
+        indicatorText.innerText = "みんなが絵を推測するのを待っています...";
+    }
 
     // プレイヤーの提出状況リスト作成
     const listEl = document.getElementById('waiting-players-status');
@@ -361,27 +361,25 @@ function showShowcaseView() {
     const chainEl = document.getElementById('showcase-chain-list');
     chainEl.innerHTML = "";
 
-    // 1. 最初のお題（主役が書いた）
-    const prompt0 = roomState.stepData.step_0[hostPlayerId];
-    chainEl.appendChild(createChainTextItem("スタートのお題", hostPlayerName, prompt0));
+    // プレイヤー数分の全ステップをループして伝言歴史を動的にレンダリング
+    for (let step = 0; step < N; step++) {
+        const currentPlayerId = order[(sIdx + step) % N];
+        const currentPlayerName = roomState.players[currentPlayerId] ? roomState.players[currentPlayerId].name : "ゲスト";
+        const stepKey = `step_${step}`;
+        const stepContent = roomState.stepData && roomState.stepData[stepKey] ? roomState.stepData[stepKey][currentPlayerId] : null;
 
-    // 2. 最初の絵（次の人が描いた）
-    const p1 = order[(sIdx + 1) % N];
-    const p1Name = roomState.players[p1].name;
-    const img1 = roomState.stepData.step_1[p1];
-    chainEl.appendChild(createChainImageItem(`${p1Name} さんが描いた絵`, img1));
+        if (!stepContent) continue;
 
-    // 3. 次の人の推測（さらに次の人が推測）
-    const p2 = order[(sIdx + 2) % N];
-    const p2Name = roomState.players[p2].name;
-    const guess2 = roomState.stepData.step_2[p2];
-    chainEl.appendChild(createChainTextItem(`${p2Name} さんの推測`, p2Name, guess2));
-
-    // 4. 最後の絵（さらに次の人が描いた）
-    const p3 = order[(sIdx + 3) % N];
-    const p3Name = roomState.players[p3].name;
-    const img3 = roomState.stepData.step_3[p3];
-    chainEl.appendChild(createChainImageItem(`${p3Name} さんが描いた絵`, img3));
+        if (step === 0) {
+            chainEl.appendChild(createChainTextItem("スタートのお題", currentPlayerName, stepContent));
+        } else if (step % 2 === 1) {
+            // 奇数ステップ：お絵描き
+            chainEl.appendChild(createChainImageItem(`${currentPlayerName} さんが描いた絵`, stepContent));
+        } else {
+            // 偶数ステップ：言葉で推測
+            chainEl.appendChild(createChainTextItem(`${currentPlayerName} さんの推測`, currentPlayerName, stepContent));
+        }
+    }
 
     // コントロール表示
     document.getElementById('next-chain-btn').style.display = isHost && sIdx < N - 1 ? 'inline-block' : 'none';
