@@ -209,6 +209,11 @@ function listenToRoom() {
 window.hostStartGame = function() {
     if(!isHost) return;
     
+    if (!roomState || !roomState.playersOrder || roomState.playersOrder.length < 2) {
+        alert("お絵描きクイズを遊ぶには2人以上の参加者が必要です！");
+        return;
+    }
+    
     // プレイヤーの初期スコアと状態をリセット
     const updates = {};
     roomState.playersOrder.forEach(pId => {

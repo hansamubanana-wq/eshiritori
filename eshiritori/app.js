@@ -173,6 +173,10 @@ function listenToRoom() {
 
 window.hostStartGame = function() {
     if(!isHost) return;
+    if (!roomState || !roomState.playersOrder || roomState.playersOrder.length < 2) {
+        alert("絵しりとりを遊ぶには2人以上の参加者が必要です！");
+        return;
+    }
     update(ref(db, 'rooms/' + roomId), { status: "playing", currentIndex: 0 });
 }
 
