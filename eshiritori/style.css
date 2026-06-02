@@ -145,6 +145,10 @@ input[type="text"], input[type="number"], select {
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     cursor: crosshair;
     touch-action: none;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    box-sizing: border-box;
 }
 .live-canvas-display {
     width: 380px;
@@ -199,3 +203,52 @@ input[type="text"], input[type="number"], select {
 #preview-name { margin-top: 10px; font-weight: bold; font-size: 18px; color: #4a3b32; }
 
 .lobby-list { text-align: left; background: #f4eee1; padding: 15px; border-radius: 8px; border: 2px solid #9c826b; margin: 15px auto; max-width: 300px; }
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+    .container {
+        padding: 15px 10px;
+    }
+    .container::before {
+        font-size: 14px;
+        letter-spacing: 8px;
+        top: -10px;
+    }
+    h1 {
+        font-size: 20px;
+    }
+    h2 {
+        font-size: 18px;
+    }
+    button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+    input[type="text"] {
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+    #canvas, .live-canvas-display {
+        width: 100%;
+        max-width: 320px;
+        height: auto;
+    }
+    .palette-container {
+        padding: 6px;
+        gap: 6px;
+    }
+    .color-dot {
+        width: 22px;
+        height: 22px;
+    }
+    .eraser-btn {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+    .tool-select {
+        font-size: 12px;
+        padding: 3px 6px;
+    }
+}

@@ -95,7 +95,20 @@ input[type="text"], select {
 
 @media (max-width: 950px) {
     .quiz-main-layout {
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .canvas-container {
+        order: 1;
+    }
+    .chat-container {
+        order: 2;
+        height: 320px;
+    }
+    .scoreboard-container {
+        order: 3;
+        min-height: auto;
     }
 }
 
@@ -180,6 +193,10 @@ input[type="text"], select {
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     cursor: crosshair;
     touch-action: none;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    box-sizing: border-box;
 }
 
 .live-canvas-display {
@@ -365,4 +382,48 @@ input[type="text"], select {
 @keyframes bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+    .container {
+        padding: 15px 10px;
+    }
+    .container::before {
+        font-size: 14px;
+        letter-spacing: 8px;
+        top: -10px;
+    }
+    h1 {
+        font-size: 20px;
+    }
+    h2 {
+        font-size: 18px;
+    }
+    button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+    input[type="text"] {
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+    .palette-container {
+        padding: 6px;
+        gap: 6px;
+    }
+    .color-dot {
+        width: 22px;
+        height: 22px;
+    }
+    .eraser-btn {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+    .tool-select {
+        font-size: 12px;
+        padding: 3px 6px;
+    }
 }
