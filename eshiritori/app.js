@@ -63,10 +63,8 @@ window.connectLobby = function() {
     
     const roomRef = ref(db, 'rooms/' + roomId);
     get(roomRef).then((snapshot) => {
-        // 💡 過去のゲームデータが残っているかチェック
         if (snapshot.exists()) {
             let data = snapshot.val();
-            // 終わっている、またはプレイ中の古い部屋なら、最初の人が自動的にリセットして再利用
             if (data.status === "result" || data.status === "playing") {
                 isHost = true;
                 createRoom(); 
@@ -133,6 +131,8 @@ function joinRoom() {
 }
 
 function listenToRoom() {
+    startListenComments(); // 💬 コメントの監視処理を開始
+    
     const roomRef = ref(db, 'rooms/' + roomId);
     onValue(roomRef, (snapshot) => {
         const data = snapshot.val();
@@ -508,7 +508,6 @@ function kataToHira(str) {
     return str.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60));
 }
 
-// フレンドをロビーに招待する処理
 window.openLobbyInviteModal = function() {
     const modal = document.getElementById('lobby-invite-modal');
     modal.style.display = "flex";
@@ -583,5 +582,69 @@ window.openLobbyInviteModal = function() {
                 }
             });
         });
+    });
+}
+
+// ==========================================
+// 💬 リアルタイムコメント機能のロジック
+// ==========================================
+
+window.sendComment = function() {
+    const inputEl = document.getElementById('comment-input');
+    const commentText = inputEl.value.trim();
+    
+    if (!commentText || !roomId || !myPlayerName) return;
+
+    const commentsRef = push(ref(db, `rooms/${roomId}/comments`));
+    set(commentsRef, {
+        sender: myPlayerName,
+        text: commentText,
+        timestamp: Date.now()
+    }).then(() => {
+        inputEl.value = ""; 
+    }).catch((err) => {
+        console.error("コメントの送信に失敗したよ: ", err);
+    });
+};
+
+function startListenComments() {
+    const commentsContainer = document.getElementById('comments-container');
+    const commentInput = document.getElementById('comment-input');
+    const commentSendBtn = document.getElementById('comment-send-btn');
+
+    commentInput.disabled = false;
+    commentSendBtn.disabled = false;
+    commentInput.placeholder = "メッセージを送信...";
+
+    const commentsRef = ref(db, `rooms/${roomId}/comments`);
+    
+    onValue(commentsRef, (snapshot) => {
+        commentsContainer.innerHTML = ""; 
+        const data = snapshot.val();
+        
+        if (!data) {
+            commentsContainer.innerHTML = `<div style="color: #7f8c8d; text-align: center; font-size: 12px; margin-top: 50px;">コメントはまだありません。</div>`;
+            return;
+        }
+
+        const commentList = Object.keys(data).map(key => data[key]);
+        commentList.sort((a, b) => a.timestamp - b.timestamp);
+
+        commentList.forEach(c => {
+            const row = document.createElement('div');
+            row.style.marginBottom = "6px";
+            row.style.wordBreak = "break-all";
+
+            const isMe = c.sender === myPlayerName;
+            const senderColor = isMe ? "#e67e22" : "#6d5843";
+
+            row.innerHTML = `
+                <span style="font-weight: bold; color: ${senderColor};">[${c.sender}]</span> 
+                <span style="color: #4a3b32;">${c.text}</span>
+            `;
+            commentsContainer.appendChild(row);
+        });
+
+        commentsContainer.scrollTop = commentsContainer.scrollHeight;
     });
 }
