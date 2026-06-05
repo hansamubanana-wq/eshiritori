@@ -3,111 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>お絵描きマルチプレイ広場</title>
+    <title>リアルタイム絵しりとり</title>
     <link rel="stylesheet" href="style.css">
-    <script type="module" src="portal.js"></script>
+    <script type="module" src="app.js"></script>
 </head>
 <body>
 
-<div class="portal-container">
-    <header>
-        <h1><span class="logo-icon">🎨</span> お絵描きマルチプレイ広場</h1>
-        <p class="subtitle">みんなでつながってリアルタイムでお絵描きゲームを楽しもう！</p>
-    </header>
-
-    <div class="portal-main-layout">
-        <!-- 左側：ゲームグリッド -->
-        <div class="games-grid-wrapper">
-            <div class="games-grid">
-                <!-- 絵しりとり -->
-                <a href="eshiritori/index.html" class="game-card playable shiritori">
-                    <span class="badge playable">遊べます！</span>
-                    <div class="game-card-content">
-                        <span class="game-icon">🍎</span>
-                        <h2 class="game-title">リアルタイム絵しりとり</h2>
-                        <p class="game-desc">前の人の描いた絵からリアルタイムでしりとりをつなげよう！お絵描き過程の生中継モニター付きで待っている時間も楽しめます。</p>
-                    </div>
-                    <div class="play-btn">あそびに行く！ ➔</div>
-                </a>
-
-                <!-- お絵描きクイズ -->
-                <a href="drawing-quiz/index.html" class="game-card playable quiz">
-                    <span class="badge playable">遊べます！</span>
-                    <div class="game-card-content">
-                        <span class="game-icon">✏️</span>
-                        <h2 class="game-title">スピードお絵描きクイズ</h2>
-                        <p class="game-desc">一人がお題に沿って絵を描き、他の全員がチャットで答えを推測します！一番早く正解を当てられた人が高得点！</p>
-                    </div>
-                    <div class="play-btn">あそびに行く！ ➔</div>
-                </a>
-
-                <!-- お絵描き伝言ゲーム -->
-                <a href="drawing-telephone/index.html" class="game-card playable telephone">
-                    <span class="badge playable">遊べます！</span>
-                    <div class="game-card-content">
-                        <span class="game-icon">📞</span>
-                        <h2 class="game-title">お絵描き伝言ゲーム</h2>
-                        <p class="game-desc">最初のお題から「絵を描く ➔ 推測する ➔ 絵を描く ➔ 推測する」を交互に繰り返して、最後にどんな言葉に伝わったかを当てるゲーム！</p>
-                    </div>
-                    <div class="play-btn">あそびに行く！ ➔</div>
-                </a>
-            </div>
+<div class="container">
+    <div id="global-roadmap-box" style="display:none;">
+        <div id="round-title" style="font-weight: bold; font-size: 16px; margin-bottom: 5px; text-align: left;"></div>
+        <p style="font-size: 12px; color:#7f8c8d; text-align: left; margin: 0 0 5px 0;">※前の人の絵を押している間は大きく見えるよ！</p>
+        <div class="roadmap-outer">
+            <div id="roadmap-list" class="roadmap-container"></div>
         </div>
+    </div>
 
-        <!-- 右側：アカウント & フレンドサイドバー -->
-        <div class="portal-sidebar">
-            <!-- アカウントカード -->
-            <div class="sidebar-card" id="profile-area">
-                <div class="profile-setup" id="profile-setup-view">
-                    <h3>👤 アカウント作成</h3>
-                    <p style="font-size: 12px; color: #7f6e64; margin-top: 0;">名前を登録するとフレンド機能や招待機能が使えます！</p>
-                    <input type="text" id="profile-name-input" placeholder="名前を入力してください" style="width: 100%; box-sizing: border-box; margin-bottom: 12px; text-align: left;">
-                    <button id="register-profile-btn" style="width: 100%; padding: 8px 16px; font-size: 14px;">プロフィール登録</button>
-                </div>
-                <div class="profile-display" id="profile-display-view" style="display: none;">
-                    <div style="display: flex; align-items: center; gap: 12px; text-align: left;">
-                        <span style="font-size: 32px;">👤</span>
-                        <div>
-                            <h3 id="display-username" style="margin: 0; font-size: 18px; color: #5c4033;"></h3>
-                            <div class="friend-code-badge" id="display-friendcode-badge">
-                                コード: <span id="display-friendcode" style="font-weight: bold; font-family: monospace;"></span> 📋
-                            </div>
-                        </div>
-                    </div>
-                    <button id="edit-profile-btn" style="margin-top: 12px; background-color: #7f8c8d; border-bottom: 3px solid #626d6e; padding: 6px 12px; font-size: 11px; width: 100%;">名前を変更する</button>
+    <div id="screen-setup" class="screen active">
+        <h1>🎨 オンライン絵しりとり</h1>
+        <div style="margin-bottom: 15px;">
+            あなたの名前：<br><input type="text" id="user-name" placeholder="プレイヤー名" style="width: 250px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: seiryo123" style="width: 250px;">
+        </div>
+        <p style="font-size: 13px; color: #7f8c8d; max-width: 400px; margin: 0 auto 15px;">※同じパスワードを入力した人と自動的に同じ部屋に入ります。誰もいない、または終わった部屋のパスワードなら新しい部屋をリセットして作るよ！</p>
+        <button onclick="connectLobby()">部屋に入る / 作る</button>
+        <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:10px;">ゲーム選択に戻る</button>
+
+        <!-- 遊び方説明カード -->
+        <div class="instructions-card">
+            <h3>📖 あそびかた</h3>
+            <ul>
+                <li><strong>順番に絵を描こう：</strong>指定された最初の文字から、最後の文字までお絵描きでしりとりを繋げよう！</li>
+                <li><strong>正解の入力：</strong>描き終わったら、自分が描いた絵の「正解ワード」をひらがなで入力して送信します。</li>
+                <li><strong>リアルタイム生中継：</strong>他の人が描いている間、描画している線がキャンバスにリアルタイムで生中継されます！</li>
+                <li><strong>結果発表：</strong>全員が4周描き終わるとリレー結果が表示され、しりとりが綺麗に繋がったか確認できます。</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="screen-lobby" class="screen">
+        <h2 id="lobby-room-title">部屋パスワード: --</h2>
+        <button id="lobby-invite-btn" onclick="openLobbyInviteModal()" style="background-color: #3498db; border-bottom: 4px solid #2980b9; padding: 8px 16px; font-size: 13px; margin-bottom: 12px; display: none;">👥 フレンドを招待</button>
+        <p>一緒に遊ぶ友達に上のパスワードを教えてあげてね。全員集まるまで待機！</p>
+        <div class="lobby-list">
+            <div style="font-weight: bold; border-bottom: 2px dashed #9c826b; padding-bottom: 5px; margin-bottom: 10px;">現在の参加メンバー：</div>
+            <div id="lobby-players-list"></div>
+        </div>
+        <br>
+        <button id="start-game-btn" onclick="hostStartGame()" style="display:none; background-color: #27ae60; border-color: #1e8449;">ゲームをスタートする！</button>
+        <p id="wait-host-msg" style="font-size: 14px; color:#7f8c8d;">※ホスト（一番最初に入った人）がスタートボタンを押すと始まります。</p>
+    </div>
+
+    <div id="screen-wait-turn" class="screen">
+        <h2 id="wait-message" style="color: #6d5843;">他のプレイヤーが描き終わるのを待っています...</h2>
+        
+        <div style="margin: 15px 0; font-weight: bold; color: #e67e22; font-size:16px;">📺 お絵描きリアルタイム生中継モニター</div>
+        <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+            <img id="live-stream-view" class="live-canvas-display" src="" style="display:none;">
+        </div>
+        <p>上のキャンバスとタイムラインが、描かれている瞬間にリアルタイムで動くよ！</p>
+    </div>
+
+    <div id="screen-turn" class="screen">
+        <h2 id="turn-message" style="font-size: 26px; color: #d35400;">あなたの番です！</h2>
+        <p>制限時間はないので、じっくり考えて準備ができたらお絵描きを始めてね！</p>
+        <button onclick="startDrawing()" style="font-size: 20px; padding: 12px 40px;">お絵描きを始める</button>
+    </div>
+
+    <div id="screen-draw" class="screen">
+        <div class="game-main-layout">
+            <div>
+                <h2 id="drawer-name">キャンバスに描いて！</h2>
+                <div style="font-size: 14px; color: #e67e22; font-weight: bold; margin-bottom: 15px;">※ いま描いている線は全員に生中継されています！</div>
+                <div style="margin-bottom: 15px;">
+                    <button onclick="clearCanvas()" style="background-color: #7f8c8d; border-color:#626d6e; margin-right:10px;">全部消す</button>
+                    <button onclick="finishDrawing()" style="background-color: #27ae60; border-color: #1e8449;">描けた！</button>
                 </div>
             </div>
-
-            <!-- フレンドリストカード -->
-            <div class="sidebar-card" id="friends-area" style="display: none;">
-                <div class="friends-list-container">
-                    <h3>👥 フレンドリスト</h3>
-                    <div class="add-friend-form">
-                        <input type="text" id="friend-code-input" placeholder="フレンドコードを追加" style="width: 100%; box-sizing: border-box; margin-bottom: 8px; font-size: 13px; text-align: left;">
-                        <button id="add-friend-btn" style="width: 100%; padding: 6px 12px; font-size: 13px; background-color: #3498db; border-color: #2980b9;">フレンドを追加</button>
-                    </div>
-                    <div id="friends-list" class="friends-list-scroll">
-                        <div style="color: #7f6e64; font-size: 12px; text-align: center; padding: 20px 0;">読み込み中...</div>
-                    </div>
+            
+            <div class="canvas-area">
+                <div class="palette-container">
+                    <div class="color-dot selected" style="background-color: #4a3b32;" onclick="selectColor('#4a3b32', this)"></div>
+                    <div class="color-dot" style="background-color: #c0392b;" onclick="selectColor('#c0392b', this)"></div>
+                    <div class="color-dot" style="background-color: #e67e22;" onclick="selectColor('#e67e22', this)"></div>
+                    <div class="color-dot" style="background-color: #f1c40f;" onclick="selectColor('#f1c40f', this)"></div>
+                    <div class="color-dot" style="background-color: #27ae60;" onclick="selectColor('#27ae60', this)"></div>
+                    <div class="color-dot" style="background-color: #2980b9;" onclick="selectColor('#2980b9', this)"></div>
+                    <div class="color-dot" style="background-color: #9b59b6;" onclick="selectColor('#9b59b6', this)"></div>
+                    <button id="eraser-btn" class="eraser-btn" onclick="selectEraser()"><span>🧹</span>消しゴム</button>
+                    <select id="line-width-select" class="tool-select" onchange="selectWidth(this.value)">
+                        <option value="4">ふつうの太さ</option>
+                        <option value="10">ふとい線</option>
+                        <option value="20">かなり太い</option>
+                        <option value="40">超ぶっとい</option>
+                    </select>
                 </div>
+                <canvas id="canvas" width="380" height="380"></canvas>
             </div>
         </div>
     </div>
 
-    <footer>
-        <p>© 2026 Multiplayer Paint Playground - Hansamubanana</p>
-    </footer>
+    <div id="screen-answer" class="screen">
+        <h2>今描いたものの「正解ワード」は？</h2>
+        <input type="text" id="correct-answer" placeholder="例: りんご" style="font-size: 20px; width: 60%; max-width: 300px;"><br><br>
+        <button onclick="submitAnswer()" style="background-color: #2980b9; border-color:#21618c;">確定して次の人へ送信</button>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <h2>🎉 結果発表 🎉</h2>
+        <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">
+            <div id="stats-area" style="background:#fff3cd; border:2px solid #ffc107; padding:15px; border-radius:8px; font-weight:bold; width: 100%;"></div>
+        </div>
+        
+        <h3 style="text-align: left; border-bottom: 2px dashed #9c826b; padding-bottom: 5px;">全員のリレー一覧：</h3>
+        <div id="result-grid-list" class="result-grid"></div>
+        
+        <div style="margin-top: 30px;">
+            <button id="next-round-btn" onclick="nextRound()" style="display:none; background-color: #27ae60; border-color: #1e8449; font-size:18px;">次のラウンドへ（ホストのみ操作可）</button>
+            <button onclick="location.reload()" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:15px;">タイトルへ戻る</button>
+            <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:15px;">ゲーム選択に戻る</button>
+        </div>
+    </div>
+
+    <!-- 💬 リアルタイムコメント機能エリア -->
+    <div id="comment-box" style="margin-top: 30px; background-color: #f4eee1; border: 2px dashed #9c826b; border-radius: 12px; padding: 15px; text-align: left;">
+        <h3 style="margin-top: 0; margin-bottom: 10px; color: #5c4033; font-size: 16px; border-bottom: 2px solid #9c826b; padding-bottom: 4px;">💬 みんなのコメント</h3>
+        
+        <!-- コメント表示欄 -->
+        <div id="comments-container" style="height: 150px; overflow-y: auto; background: white; border: 1px solid #d3c9b8; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; line-height: 1.5;">
+            <div style="color: #7f8c8d; text-align: center; font-size: 12px; margin-top: 50px;">部屋に入るとコメントが見られるよ</div>
+        </div>
+        
+        <!-- コメント入力欄 -->
+        <form id="comment-form" onsubmit="event.preventDefault(); window.sendComment();" style="display: flex; gap: 8px;">
+            <input type="text" id="comment-input" placeholder="コメントを入力..." style="flex: 1; text-align: left; padding: 8px 12px;" disabled>
+            <button type="submit" id="comment-send-btn" style="padding: 6px 16px; font-size: 14px; border-radius: 8px;" disabled>送信</button>
+        </form>
+    </div>
 </div>
 
-<!-- 招待通知ポップアップモーダル -->
-<div id="invite-modal" class="invite-notification-modal">
-    <div class="invite-modal-content">
-        <div style="font-size: 36px; animation: bounce 1.5s infinite;">✉️</div>
-        <div id="invite-modal-text" style="font-weight: bold; font-size: 16px; margin: 15px 0; color: #4a3b32; line-height: 1.4;">〇〇さんからゲームへの招待が届いています！</div>
-        <div class="invite-modal-buttons">
-            <button id="invite-accept-btn" style="background-color: #27ae60; border-color: #1e8449; padding: 8px 24px;">参加する</button>
-            <button id="invite-decline-btn" style="background-color: #c0392b; border-color: #962d22; padding: 8px 24px; margin-left: 10px;">ことわる</button>
+<div id="preview-overlay" onclick="this.style.display='none'">
+    <div id="preview-box">
+        <img id="preview-img" src="">
+        <div id="preview-name"></div>
+    </div>
+</div>
+
+<!-- フレンド招待モーダル -->
+<div id="lobby-invite-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.6); z-index: 99999; justify-content: center; align-items: center;">
+    <div style="background: #fffdf9; padding: 25px; border-radius: 16px; border: 4px solid #6d5843; text-align: center; max-width: 320px; width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.25);">
+        <h3 style="margin-top: 0; border-bottom: 2px dashed #9c826b; padding-bottom: 6px; color: #5c4033;">👥 フレンドを招待</h3>
+        <div id="lobby-invite-friends-list" style="max-height: 200px; overflow-y: auto; margin: 15px 0; text-align: left; display: flex; flex-direction: column; gap: 8px;">
+            <div style="color: #7f8c8d; font-size: 12px; text-align: center;">読み込み中...</div>
         </div>
+        <button onclick="document.getElementById('lobby-invite-modal').style.display = 'none'" style="background-color: #7f8c8d; border-bottom: 4px solid #626d6e; padding: 8px 16px; font-size: 14px; width: 100%; border-radius: 20px;">閉じる</button>
     </div>
 </div>
 
