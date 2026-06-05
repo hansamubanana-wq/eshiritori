@@ -134,7 +134,7 @@ function updatePresence() {
     set(userActiveRef, Date.now());
 }
 
-// フレンド追加
+// フレンド追加（片方が入力したら両方登録される相互自動方式に変更）
 function addFriendByCode() {
     const codeInput = document.getElementById('friend-code-input').value.trim().toUpperCase();
     if (!codeInput) {
@@ -154,9 +154,16 @@ function addFriendByCode() {
         if (snapshot.exists()) {
             const friendId = snapshot.val();
             
-            // フレンドに追加
+            // 自分のフレンドリストに相手を追加
             set(ref(db, `users/${myUserId}/friends/${friendId}`), true).then(() => {
-                alert("フレンドを追加しました！");
+                
+                // 【追加機能】同時に相手のフレンドリストにも自分を追加
+                set(ref(db, `users/${friendId}/friends/${myUserId}`), true).then(() => {
+                    alert("フレンドを追加しました！お互いのリストに同期されたよ。");
+                }).catch(err => {
+                    console.error("相手側への自動登録に失敗したよ: ", err);
+                });
+
             });
         } else {
             alert("フレンドコードが見つかりません。入力内容を確認してください。");
