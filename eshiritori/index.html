@@ -125,6 +125,22 @@
             <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:15px;">ゲーム選択に戻る</button>
         </div>
     </div>
+
+    <!-- 💬 リアルタイムコメント機能エリア -->
+    <div id="comment-box" style="margin-top: 30px; background-color: #f4eee1; border: 2px dashed #9c826b; border-radius: 12px; padding: 15px; text-align: left;">
+        <h3 style="margin-top: 0; margin-bottom: 10px; color: #5c4033; font-size: 16px; border-bottom: 2px solid #9c826b; padding-bottom: 4px;">💬 みんなのコメント</h3>
+        
+        <!-- コメント表示欄 -->
+        <div id="comments-container" style="height: 150px; overflow-y: auto; background: white; border: 1px solid #d3c9b8; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; line-height: 1.5;">
+            <div style="color: #7f8c8d; text-align: center; font-size: 12px; margin-top: 50px;">部屋に入るとコメントが見られるよ</div>
+        </div>
+        
+        <!-- コメント入力欄 -->
+        <form id="comment-form" onsubmit="event.preventDefault(); window.sendComment();" style="display: flex; gap: 8px;">
+            <input type="text" id="comment-input" placeholder="コメントを入力..." style="flex: 1; text-align: left; padding: 8px 12px;" disabled>
+            <button type="submit" id="comment-send-btn" style="padding: 6px 16px; font-size: 14px; border-radius: 8px;" disabled>送信</button>
+        </form>
+    </div>
 </div>
 
 <div id="preview-overlay" onclick="this.style.display='none'">
