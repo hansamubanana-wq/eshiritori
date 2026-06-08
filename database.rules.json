@@ -1,0 +1,39 @@
+{
+  "rules": {
+    // Disable read and write at the root level to prevent downloading the whole database
+    ".read": false,
+    ".write": false,
+
+    // Allow read and write only to specific nodes that the games use
+    "users": {
+      "$uid": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "friend-codes": {
+      "$code": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "rooms-quiz": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "rooms-telephone": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
