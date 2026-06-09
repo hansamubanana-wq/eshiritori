@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>神経衰弱</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="app.js"></script>
+    <script src="../corner-mode.js" defer></script>
+</head>
+<body>
+<div class="container">
+
+    <!-- セットアップ画面 -->
+    <div id="screen-setup" class="screen active">
+        <h1>🃏 神経衰弱</h1>
+        <p>オンラインみんなで神経衰弱！絵文字のペアを見つけてポイントを競え！</p>
+        <div style="margin-bottom:12px;">
+            あなたの名前：<br>
+            <input type="text" id="user-name" placeholder="プレイヤー名" style="width:250px;">
+        </div>
+        <div style="margin-bottom:12px;">
+            部屋のパスワード：<br>
+            <input type="text" id="room-id" placeholder="例: card123" style="width:250px;">
+        </div>
+        <button onclick="connectLobby()">部屋に入る / 作る</button>
+        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+        <div class="instructions-card">
+            <h3>📖 遊び方ルール</h3>
+            <ul>
+                <li><strong>ターン制：</strong>順番にカードを2枚めくります。自分のターンのみ操作できます。</li>
+                <li><strong>ペア成立：</strong>同じ絵文字が出たらペア成立！もう一度続けてめくれます。</li>
+                <li><strong>ペア失敗：</strong>違う絵文字ならカードが裏返り、次のプレイヤーのターンへ。</li>
+                <li><strong>勝利：</strong>全ペアを見つけたら終了！一番多くペアを集めた人の勝ち！</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ロビー画面 -->
+    <div id="screen-lobby" class="screen">
+        <h2 id="lobby-room-title">部屋: --</h2>
+        <p>全員集まったらホストがスタートを押してください！</p>
+        <div class="lobby-list">
+            <div style="font-weight:bold;border-bottom:2px dashed #9c826b;padding-bottom:5px;margin-bottom:10px;">参加中メンバー：</div>
+            <div id="lobby-players-list"></div>
+        </div>
+        <button id="start-game-btn" onclick="hostStartGame()" style="display:none;background-color:#1abc9c;border-color:#16a085;margin-top:15px;">ゲームスタート！🃏</button>
+        <p id="wait-host-msg" style="font-size:14px;color:#7f8c8d;margin-top:10px;">※ホストがスタートボタンを押すと始まります。</p>
+        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;font-size:13px;margin-top:5px;">ゲーム選択に戻る</button>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="screen-playing" class="screen">
+        <div class="turn-bar">
+            <div id="turn-indicator" class="turn-indicator">⌛ 準備中...</div>
+            <div style="font-size:13px;color:#7f8c8d;">残り <strong id="remaining-pairs">--</strong> ペア</div>
+        </div>
+        <div class="game-layout">
+            <div id="card-grid" class="card-grid"></div>
+            <div class="score-panel">
+                <div class="score-title">🏆 スコア</div>
+                <div id="score-list"></div>
+                <div class="matched-info" id="matched-info"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 結果画面 -->
+    <div id="screen-result" class="screen">
+        <h2>🎉 ゲーム終了！</h2>
+        <div id="result-leaderboard" class="result-leaderboard"></div>
+        <div style="margin-top:25px;text-align:center;">
+            <button id="restart-btn" onclick="restartGame()" style="display:none;background-color:#1abc9c;border-color:#16a085;font-size:17px;">もう一度遊ぶ（ホストのみ）</button>
+            <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

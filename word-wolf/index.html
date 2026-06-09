@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ワードウルフ</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="app.js"></script>
+    <script src="../corner-mode.js" defer></script>
+</head>
+<body>
+<div class="container">
+
+    <!-- セットアップ画面 -->
+    <div id="screen-setup" class="screen active">
+        <h1>🐺 ワードウルフ</h1>
+        <p>みんな似たようなワードを持っているが、1人だけ違うワードの「ウルフ」がいる！<br>話し合いでウルフを見つけ出せ！</p>
+        <div style="margin-bottom:12px;">
+            あなたの名前：<br>
+            <input type="text" id="user-name" placeholder="プレイヤー名" style="width:250px;">
+        </div>
+        <div style="margin-bottom:12px;">
+            部屋のパスワード：<br>
+            <input type="text" id="room-id" placeholder="例: wolf123" style="width:250px;">
+        </div>
+        <p style="font-size:13px;color:#7f8c8d;max-width:400px;margin:0 auto 15px;">※同じパスワードを入力した人と同じ部屋に入ります。</p>
+        <button onclick="connectLobby()">部屋に入る / 作る</button>
+        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+        <div class="instructions-card">
+            <h3>📖 遊び方ルール</h3>
+            <ul>
+                <li><strong>ワード配布：</strong>市民には同じワード、ウルフ（1人）だけ少し違うワードが配られます。</li>
+                <li><strong>話し合い（3分）：</strong>自分のワードを直接言わずに、ヒントになることを話します。</li>
+                <li><strong>投票：</strong>ウルフだと思う人に投票！最多票を取られた人が処刑されます。</li>
+                <li><strong>勝敗：</strong>ウルフが処刑されたら市民の勝ち！ウルフが生き残れば逆転勝利！</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ロビー画面 -->
+    <div id="screen-lobby" class="screen">
+        <h2 id="lobby-room-title">部屋: --</h2>
+        <p>全員集まったらホストがスタートを押してください！（最低3人必要）</p>
+        <div class="lobby-list">
+            <div style="font-weight:bold;border-bottom:2px dashed #9c826b;padding-bottom:5px;margin-bottom:10px;">参加中メンバー：</div>
+            <div id="lobby-players-list"></div>
+        </div>
+        <button id="start-game-btn" onclick="hostStartGame()" style="display:none;background-color:#27ae60;border-color:#1e8449;margin-top:15px;">ゲームをスタート！</button>
+        <p id="wait-host-msg" style="font-size:14px;color:#7f8c8d;margin-top:10px;">※ホストがスタートボタンを押すと始まります。</p>
+        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;font-size:13px;margin-top:5px;">ゲーム選択に戻る</button>
+    </div>
+
+    <!-- ワード確認画面 -->
+    <div id="screen-word_reveal" class="screen">
+        <h2>📩 あなたのワードを確認しよう</h2>
+        <p style="color:#7f8c8d;font-size:14px;">他の人には絶対に見せないでね！</p>
+        <div class="word-cover" id="word-cover" onclick="revealWord()">
+            <div class="word-cover-text">👆 タップして確認する</div>
+        </div>
+        <div class="word-display" id="word-display" style="display:none;">
+            <div class="your-word" id="your-word-text">???</div><br>
+            <div class="role-badge" id="role-badge">市民</div>
+        </div>
+        <div style="margin:20px auto;max-width:320px;">
+            <div id="waiting-others" style="color:#7f8c8d;font-size:14px;margin-bottom:8px;">他のプレイヤーの準備を待っています...</div>
+            <div id="player-ready-list" style="text-align:left;font-size:14px;"></div>
+        </div>
+        <button id="ready-btn" onclick="markReady()" style="display:none;background-color:#3498db;border-color:#2980b9;margin-top:10px;">確認した！準備OK 👍</button>
+    </div>
+
+    <!-- 話し合い画面 -->
+    <div id="screen-discussion" class="screen">
+        <div class="game-info-bar">
+            <div>🗣️ <strong>話し合いタイム！</strong> ワードを直接言わないで話そう</div>
+            <div class="timer-box"><span>⏱️</span><span id="timer-value">3:00</span></div>
+        </div>
+        <div class="word-reminder">あなたのワード: <strong id="reminder-word">???</strong></div>
+        <div class="discussion-layout">
+            <div class="players-panel">
+                <div class="panel-title">👥 参加者</div>
+                <div id="discussion-players-list"></div>
+            </div>
+            <div class="chat-container">
+                <div id="chat-messages" class="chat-messages"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="メッセージを入力..." onkeydown="if(event.key==='Enter')sendChat()">
+                    <button onclick="sendChat()">送信</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 投票画面 -->
+    <div id="screen-voting" class="screen">
+        <h2>🗳️ 投票タイム！</h2>
+        <p>ウルフだと思う人に投票してください（自分には投票できません）</p>
+        <div class="word-reminder">あなたのワード: <strong id="vote-reminder-word">???</strong></div>
+        <div id="voting-players-list" class="voting-grid"></div>
+        <p id="vote-status" style="color:#7f8c8d;font-size:14px;margin-top:10px;"></p>
+    </div>
+
+    <!-- 結果画面 -->
+    <div id="screen-result" class="screen">
+        <h2 id="result-title" style="font-size:28px;">🎉 結果発表！</h2>
+        <div id="result-winner-badge" class="winner-badge"></div>
+        <div id="result-word-reveal" class="word-reveal-box" style="max-width:400px;margin:15px auto;"></div>
+        <div id="result-players-list" class="result-players"></div>
+        <div style="margin-top:25px;text-align:center;">
+            <button id="restart-btn" onclick="restartGame()" style="display:none;background-color:#27ae60;border-color:#1e8449;font-size:17px;">もう一度遊ぶ（ホストのみ）</button>
+            <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

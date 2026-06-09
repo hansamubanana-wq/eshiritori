@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>タイピングレース</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="app.js"></script>
+    <script src="../corner-mode.js" defer></script>
+</head>
+<body>
+<div class="container">
+
+    <!-- セットアップ画面 -->
+    <div id="screen-setup" class="screen active">
+        <h1>⌨️ タイピングレース</h1>
+        <p>全員同じ文章を一斉にタイピング！一番早くゴールを目指せ！</p>
+        <div style="margin-bottom:12px;">
+            あなたの名前：<br>
+            <input type="text" id="user-name" placeholder="プレイヤー名" style="width:250px;">
+        </div>
+        <div style="margin-bottom:12px;">
+            部屋のパスワード：<br>
+            <input type="text" id="room-id" placeholder="例: race123" style="width:250px;">
+        </div>
+        <button onclick="connectLobby()">部屋に入る / 作る</button>
+        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+        <div class="instructions-card">
+            <h3>📖 遊び方ルール</h3>
+            <ul>
+                <li><strong>スタート：</strong>ホストが「スタート」を押すと3秒カウントダウン後に開始！</li>
+                <li><strong>タイピング：</strong>表示された文章を入力エリアに入力します。<strong>ひらがな入力</strong>で！</li>
+                <li><strong>進捗：</strong>全員の進捗がリアルタイムで棒グラフに表示されます。</li>
+                <li><strong>ゴール：</strong>全文入力完了！タイムが記録されます。全員ゴールで結果発表。</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ロビー画面 -->
+    <div id="screen-lobby" class="screen">
+        <h2 id="lobby-room-title">部屋: --</h2>
+        <p>全員集まったらホストがスタートを押してください！</p>
+        <div class="lobby-list">
+            <div style="font-weight:bold;border-bottom:2px dashed #9c826b;padding-bottom:5px;margin-bottom:10px;">参加中メンバー：</div>
+            <div id="lobby-players-list"></div>
+        </div>
+        <button id="start-game-btn" onclick="hostStartGame()" style="display:none;background-color:#27ae60;border-color:#1e8449;margin-top:15px;">レーススタート！🏁</button>
+        <p id="wait-host-msg" style="font-size:14px;color:#7f8c8d;margin-top:10px;">※ホストがスタートボタンを押すと始まります。</p>
+        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;font-size:13px;margin-top:5px;">ゲーム選択に戻る</button>
+    </div>
+
+    <!-- レース画面 -->
+    <div id="screen-racing" class="screen">
+        <div class="race-header">
+            <div style="font-weight:bold;">⌨️ <span id="race-status-text">準備中...</span></div>
+            <div class="timer-box">⏱️ <span id="race-timer">0.0s</span></div>
+        </div>
+
+        <!-- お題テキスト -->
+        <div class="race-text-box" id="race-text-display"></div>
+
+        <!-- 入力エリア -->
+        <div class="type-input-area">
+            <input type="text" id="type-input" class="type-input" placeholder="ここに入力してください..."
+                oninput="onTypeInput()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled>
+        </div>
+
+        <!-- 進捗バー一覧 -->
+        <div class="progress-area" id="progress-area"></div>
+    </div>
+
+    <!-- 結果画面 -->
+    <div id="screen-result" class="screen">
+        <h2>🏁 レース結果！</h2>
+        <div id="result-leaderboard" class="result-leaderboard"></div>
+        <div style="margin-top:25px;text-align:center;">
+            <button id="restart-btn" onclick="restartGame()" style="display:none;background-color:#27ae60;border-color:#1e8449;font-size:17px;">もう一度遊ぶ（ホストのみ）</button>
+            <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- カウントダウンオーバーレイ -->
+<div id="countdown-overlay" class="countdown-overlay" style="display:none;">
+    <div id="countdown-number" class="countdown-number">3</div>
+</div>
+
+</body>
+</html>

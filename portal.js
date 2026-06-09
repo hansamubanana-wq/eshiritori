@@ -233,10 +233,16 @@ function renderFriendItem(friendId, profile) {
     let statusText = "🔴 オフライン";
     if (isPlaying) {
         statusClass = "playing";
-        let gameName = "プレイ中";
-        if (profile.status === "playing_shiritori") gameName = "しりとり中";
-        else if (profile.status === "playing_quiz") gameName = "クイズ中";
-        else if (profile.status === "playing_telephone") gameName = "伝言ゲーム中";
+        const gameNames = {
+            playing_shiritori: "しりとり中",
+            playing_quiz: "クイズ中",
+            playing_telephone: "伝言ゲーム中",
+            playing_wordwolf: "ワードウルフ中",
+            playing_typing: "タイピング中",
+            playing_quizbattle: "クイズバトル中",
+            playing_memory: "神経衰弱中",
+        };
+        const gameName = gameNames[profile.status] || "プレイ中";
         statusText = `🎮 ${gameName}`;
     } else if (isOnline) {
         statusClass = "online";
@@ -278,15 +284,18 @@ function listenToInvites() {
         
         let gameTitle = "ゲーム";
         let redirectUrl = "";
-        if (invite.gameType === "eshiritori") {
-            gameTitle = "リアルタイム絵しりとり";
-            redirectUrl = "eshiritori/index.html";
-        } else if (invite.gameType === "quiz") {
-            gameTitle = "スピードお絵描きクイズ";
-            redirectUrl = "drawing-quiz/index.html";
-        } else if (invite.gameType === "telephone") {
-            gameTitle = "お絵描き伝言ゲーム";
-            redirectUrl = "drawing-telephone/index.html";
+        const gameMap = {
+            eshiritori:  { title: "リアルタイム絵しりとり",   url: "eshiritori/index.html" },
+            quiz:        { title: "スピードお絵描きクイズ",   url: "drawing-quiz/index.html" },
+            telephone:   { title: "お絵描き伝言ゲーム",       url: "drawing-telephone/index.html" },
+            wordwolf:    { title: "ワードウルフ",             url: "word-wolf/index.html" },
+            typing:      { title: "タイピングレース",         url: "typing-race/index.html" },
+            quizbattle:  { title: "クイズバトル",             url: "quiz-battle/index.html" },
+            memory:      { title: "神経衰弱",                 url: "memory-cards/index.html" },
+        };
+        if (gameMap[invite.gameType]) {
+            gameTitle = gameMap[invite.gameType].title;
+            redirectUrl = gameMap[invite.gameType].url;
         }
 
         modalText.innerText = `${invite.fromName} さんから\n『${gameTitle}』\nに招待されました！\n(部屋パスワード: ${invite.roomId})`;

@@ -262,6 +262,10 @@ h1 span.logo-icon {
 .game-card.shiritori:hover { border-color: var(--color-orange); }
 .game-card.quiz:hover { border-color: var(--color-blue); }
 .game-card.telephone:hover { border-color: var(--color-purple); }
+.game-card.wordwolf:hover { border-color: #e74c3c; }
+.game-card.typing:hover { border-color: #2980b9; }
+.game-card.quizbattle:hover { border-color: #8e44ad; }
+.game-card.memory:hover { border-color: #16a085; }
 
 .badge {
     position: absolute;
