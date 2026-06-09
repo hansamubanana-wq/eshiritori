@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, push, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyA1JE1-7hPGNeFCQn3egNwmgmViy79UYHE",
@@ -32,6 +32,7 @@ const RPATH = (id) => `typing-race-rooms/${id}`;
 let roomId = "";
 let myPlayerId = "";
 let myPlayerName = "";
+let myUserId = localStorage.getItem('userId') || "";
 let isHost = false;
 let roomState = null;
 let currentPhase = "";
@@ -121,6 +122,7 @@ function onLobbyUpdate() {
         `<div style="padding:5px 0;">${id === myPlayerId ? "🟢" : "⚪"} ${p.name}${id === roomState.hostId ? " 👑" : ""}</div>`
     ).join('');
 
+    if (myUserId) document.getElementById('lobby-invite-btn').style.display = 'inline-block';
     if (isHost) {
         document.getElementById('start-game-btn').style.display = Object.keys(players).length >= 2 ? 'inline-block' : 'none';
         document.getElementById('wait-host-msg').textContent = Object.keys(players).length >= 2
@@ -131,6 +133,56 @@ function onLobbyUpdate() {
         document.getElementById('wait-host-msg').textContent = "ホストがスタートを押すと始まります。";
     }
 }
+
+window.openLobbyInviteModal = function() {
+    const modal = document.getElementById('lobby-invite-modal');
+    modal.style.display = "flex";
+    const listEl = document.getElementById('lobby-invite-friends-list');
+    listEl.innerHTML = '<div style="color:#7f8c8d;font-size:12px;text-align:center;">読み込み中...</div>';
+    if (!myUserId) {
+        listEl.innerHTML = '<div style="color:#7f8c8d;font-size:12px;text-align:center;">ポータルでアカウント登録するとフレンド招待ができます。</div>';
+        return;
+    }
+    get(ref(db, `users/${myUserId}/friends`)).then((snapshot) => {
+        const friends = snapshot.val();
+        if (!friends) {
+            listEl.innerHTML = '<div style="color:#7f8c8d;font-size:12px;text-align:center;">フレンドがまだいません。</div>';
+            return;
+        }
+        listEl.innerHTML = "";
+        Object.keys(friends).forEach(friendId => {
+            get(ref(db, `users/${friendId}`)).then((fSnap) => {
+                const fp = fSnap.val();
+                if (!fp) return;
+                const isOnline = fp.status !== "offline" && (Date.now() - fp.lastActive < 45000);
+                const item = document.createElement('div');
+                item.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:white;border:1px solid #d3c9b8;border-radius:8px;font-size:13px;";
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = fp.name;
+                nameSpan.style.cssText = "font-weight:bold;color:#4a3b32;";
+                const btn = document.createElement('button');
+                btn.textContent = isOnline ? "招待" : "オフライン";
+                btn.disabled = !isOnline;
+                btn.style.cssText = `padding:4px 10px;font-size:11px;border-radius:12px;background-color:${isOnline ? '#2ecc71' : '#bdc3c7'};border-bottom:${isOnline ? '3px solid #27ae60' : 'none'};color:white;border-top:none;border-left:none;border-right:none;cursor:${isOnline ? 'pointer' : 'default'};font-weight:bold;`;
+                btn.onclick = () => {
+                    btn.textContent = "送信済";
+                    btn.disabled = true;
+                    btn.style.backgroundColor = "#7f8c8d";
+                    btn.style.borderBottom = "none";
+                    set(push(ref(db, `users/${friendId}/invites`)), {
+                        fromName: myPlayerName,
+                        roomId: roomId,
+                        gameType: "typing",
+                        timestamp: Date.now()
+                    });
+                };
+                item.appendChild(nameSpan);
+                item.appendChild(btn);
+                listEl.appendChild(item);
+            });
+        });
+    });
+};
 
 window.hostStartGame = async function() {
     if (!isHost || isTransitioning) return;
