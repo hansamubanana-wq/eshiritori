@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"C:/Users/Soichi/eshiritori\" && git status --porcelain | grep -q . && git add -A && git commit -m \"auto: Claude による変更\" && git push || true",
+            "shell": "bash",
+            "timeout": 30,
+            "statusMessage": "変更を自動コミット＆プッシュ中..."
+          }
+        ]
+      }
+    ]
+  }
+}
