@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>クイズバトル</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="app.js"></script>
+    <script src="../corner-mode.js" defer></script>
+</head>
+<body>
+<div class="container">
+
+    <!-- セットアップ画面 -->
+    <div id="screen-setup" class="screen active">
+        <h1>🧠 クイズバトル</h1>
+        <p>全員同時に4択クイズに挑戦！早く正解すればするほど高得点！</p>
+        <div style="margin-bottom:12px;">
+            あなたの名前：<br>
+            <input type="text" id="user-name" placeholder="プレイヤー名" style="width:250px;">
+        </div>
+        <div style="margin-bottom:12px;">
+            部屋のパスワード：<br>
+            <input type="text" id="room-id" placeholder="例: quiz456" style="width:250px;">
+        </div>
+        <button onclick="connectLobby()">部屋に入る / 作る</button>
+        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+        <div class="instructions-card">
+            <h3>📖 遊び方ルール</h3>
+            <ul>
+                <li><strong>問題：</strong>1問10秒。4択から正解を選ぼう！</li>
+                <li><strong>得点：</strong>正解すると最大<strong>100点</strong>。早いほど高得点！</li>
+                <li><strong>問題数：</strong>全10問。最終スコアで順位が決まります。</li>
+                <li><strong>ホスト：</strong>問題ごとに「次の問題へ」ボタンが表示されます。</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ロビー画面 -->
+    <div id="screen-lobby" class="screen">
+        <h2 id="lobby-room-title">部屋: --</h2>
+        <p>全員集まったらホストがスタートを押してください！</p>
+        <div class="lobby-list">
+            <div style="font-weight:bold;border-bottom:2px dashed #9c826b;padding-bottom:5px;margin-bottom:10px;">参加中メンバー：</div>
+            <div id="lobby-players-list"></div>
+        </div>
+        <button id="start-game-btn" onclick="hostStartGame()" style="display:none;background-color:#9b59b6;border-color:#8e44ad;margin-top:15px;">クイズスタート！🧠</button>
+        <p id="wait-host-msg" style="font-size:14px;color:#7f8c8d;margin-top:10px;">※ホストがスタートボタンを押すと始まります。</p>
+        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;font-size:13px;margin-top:5px;">ゲーム選択に戻る</button>
+    </div>
+
+    <!-- クイズ画面 -->
+    <div id="screen-question" class="screen">
+        <div class="quiz-header">
+            <div class="quiz-progress">問題 <span id="q-num">1</span> / <span id="q-total">10</span></div>
+            <div class="timer-circle" id="timer-circle">10</div>
+        </div>
+        <div class="quiz-layout">
+            <div>
+                <div class="question-card" id="question-text">問題文</div>
+                <div class="choices-grid" id="choices-grid"></div>
+                <div id="answer-reveal-area" style="display:none;" class="answer-reveal"></div>
+                <button id="next-question-btn" onclick="hostNextQuestion()" style="display:none;background-color:#9b59b6;border-color:#8e44ad;margin-top:10px;width:100%;">次の問題へ ➔</button>
+            </div>
+            <div class="score-panel">
+                <div class="score-title">📊 スコア</div>
+                <div id="score-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 結果画面 -->
+    <div id="screen-result" class="screen">
+        <h2>🏆 最終結果！</h2>
+        <div id="result-leaderboard" class="result-leaderboard"></div>
+        <div style="margin-top:25px;text-align:center;">
+            <button id="restart-btn" onclick="restartGame()" style="display:none;background-color:#9b59b6;border-color:#8e44ad;font-size:17px;">もう一度遊ぶ（ホストのみ）</button>
+            <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

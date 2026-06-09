@@ -1,0 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Outfit:wght@400;600;800&display=swap');
+
+body {
+    font-family: 'Outfit', 'Kosugi Maru', 'Hiragino Maru Gothic ProN', sans-serif;
+    background-color: #e6dfd3;
+    background-image: radial-gradient(#d3c9b8 10%, transparent 10%);
+    background-size: 20px 20px;
+    margin: 0; padding: 15px;
+    color: #4a3b32;
+    display: flex; justify-content: center; align-items: flex-start;
+    min-height: 100vh; box-sizing: border-box;
+}
+.container {
+    background-color: #fffdf9;
+    border: 4px solid #6d5843; border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    width: 100%; max-width: 900px;
+    padding: 30px 25px; box-sizing: border-box; position: relative;
+}
+.container::before {
+    content: "◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯ ◯";
+    position: absolute; top: -15px; left: 5%; width: 90%;
+    color: #7f8c8d; font-size: 20px; letter-spacing: 15px;
+    text-align: center; pointer-events: none;
+}
+h1 { font-size: 26px; color: #5c4033; margin-top: 5px; margin-bottom: 10px; }
+h2 { font-size: 20px; color: #5c4033; margin: 10px 0 15px; }
+button {
+    background-color: #e67e22; color: white;
+    border: none; border-bottom: 4px solid #d35400;
+    padding: 10px 24px; font-size: 16px; border-radius: 25px;
+    cursor: pointer; font-weight: bold; transition: all 0.1s; font-family: inherit;
+}
+button:active { transform: translateY(3px); border-bottom-width: 1px; }
+input[type="text"] {
+    padding: 10px; font-size: 16px;
+    border: 2px dashed #9c826b; border-radius: 8px;
+    background-color: #fffdf9; color: #4a3b32; text-align: center; font-family: inherit;
+}
+.screen { display: none; }
+.screen.active { display: block; }
+
+.lobby-list {
+    text-align: left; background: #f4eee1;
+    padding: 15px; border-radius: 8px;
+    border: 2px solid #9c826b; margin: 15px auto; max-width: 320px;
+}
+
+/* Game layout */
+.game-layout { display: grid; grid-template-columns: 1fr 220px; gap: 20px; align-items: start; }
+
+/* Turn indicator */
+.turn-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f4eee1; border: 2px solid #bdae96;
+    border-radius: 12px; padding: 10px 18px; margin-bottom: 15px;
+    flex-wrap: wrap; gap: 8px;
+}
+.turn-indicator {
+    font-weight: bold; font-size: 16px;
+    padding: 6px 14px; border-radius: 20px;
+    border: 2px solid #9c826b;
+    background: white;
+}
+.turn-indicator.my-turn { background: #fff3cd; border-color: #e67e22; color: #d35400; }
+
+/* Card grid */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin: 0;
+}
+.card {
+    aspect-ratio: 1;
+    border-radius: 10px;
+    border: 3px solid #9c826b;
+    border-bottom: 5px solid #7d6550;
+    background: #5c4033;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    cursor: pointer;
+    transition: transform 0.15s, background 0.2s;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+.card::before {
+    content: "?";
+    color: rgba(255,255,255,0.3);
+    font-size: 28px;
+    font-weight: 800;
+}
+.card.face-up::before { display: none; }
+.card.face-up {
+    background: #fffdf9;
+    animation: flipIn 0.3s ease;
+}
+.card.face-up:hover { transform: scale(1.05); }
+.card.matched {
+    background: #d5f5e3;
+    border-color: #27ae60;
+    border-bottom-color: #1e8449;
+    cursor: default;
+    opacity: 0.85;
+}
+.card.matched::before { display: none; }
+.card.wrong-flip {
+    background: #fadbd8;
+    border-color: #e74c3c;
+    animation: shake 0.5s ease;
+}
+.card.wrong-flip::before { display: none; }
+.card:not(.face-up):not(.matched):hover { transform: scale(1.05); background: #7d6550; }
+
+@keyframes flipIn { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+.card-emoji { font-size: 30px; }
+
+/* Score panel */
+.score-panel {
+    background: white; border: 3px solid #6d5843;
+    border-radius: 12px; padding: 14px;
+}
+.score-title { font-weight: bold; border-bottom: 2px dashed #9c826b; padding-bottom: 6px; margin-bottom: 10px; font-size: 14px; }
+.player-score-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 4px; border-bottom: 1px solid #f2e9e1;
+    font-size: 14px; font-weight: 600;
+}
+.player-score-row:last-child { border-bottom: none; }
+.player-score-row.active-turn { background: #fff3cd; border-radius: 6px; padding: 8px 8px; }
+.score-val { color: #e67e22; font-weight: 800; font-size: 16px; }
+
+/* Matched sets */
+.matched-info { margin-top: 10px; font-size: 12px; color: #7f8c8d; text-align: center; }
+
+/* Result */
+.result-leaderboard {
+    max-width: 440px; margin: 20px auto;
+    background: white; border: 3px solid #6d5843;
+    border-radius: 12px; padding: 20px;
+}
+.leaderboard-row {
+    display: flex; align-items: center;
+    padding: 12px; border-bottom: 1px solid #f2e9e1;
+    font-weight: bold; font-size: 17px;
+}
+.leaderboard-row:last-child { border-bottom: none; }
+.rank-badge {
+    width: 32px; height: 32px; border-radius: 50%;
+    background-color: #bdc3c7; color: white;
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 14px; font-size: 13px; flex-shrink: 0;
+}
+.rank-badge.rank-1 { background-color: #f1c40f; color: #5c4033; }
+.rank-badge.rank-2 { background-color: #bdc3c7; }
+.rank-badge.rank-3 { background-color: #e67e22; }
+.leaderboard-name { flex-grow: 1; text-align: left; }
+.leaderboard-score { color: #d35400; font-size: 18px; }
+
+.instructions-card {
+    background: #fcf8f2; border: 2px dashed #9c826b;
+    border-radius: 12px; padding: 16px 20px;
+    margin-top: 25px; max-width: 500px; margin-left: auto; margin-right: auto; text-align: left;
+}
+.instructions-card h3 { margin-top: 0; color: #5c4033; font-size: 15px; border-bottom: 2px solid #9c826b; padding-bottom: 6px; }
+.instructions-card ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; color: #5c4d43; }
+.instructions-card li { margin-bottom: 6px; }
+
+@media (max-width: 700px) {
+    .game-layout { grid-template-columns: 1fr; }
+    .card-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .card { font-size: 22px; }
+    .card-emoji { font-size: 22px; }
+}
+@media (max-width: 480px) {
+    .card-grid { grid-template-columns: repeat(4, 1fr); gap: 5px; }
+}
