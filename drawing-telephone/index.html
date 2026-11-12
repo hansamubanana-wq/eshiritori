@@ -7,6 +7,24 @@
     <link rel="stylesheet" href="style.css">
     <script type="module" src="app.js"></script>
     <script src="../corner-mode.js" defer></script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="お絵描き伝言ゲーム">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#6d5843">
+    <meta name="description" content="お絵描き伝言ゲーム">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="お絵描き伝言ゲーム">
+    <meta property="og:description" content="お絵描き伝言ゲーム">
+    <meta property="og:image" content="/assets/ogp.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="stylesheet" href="/pwa.css">
+    <script type="module" src="/pwa.js"></script>
 </head>
 <body>
 
@@ -16,10 +34,10 @@
         <h1>📞 お絵描き伝言ゲーム</h1>
         <p>「お題を書く ➔ 描く ➔ 推測する ➔ 描く」を交代で繰り返し、最後に答えがどう伝わったか発表し合おう！</p>
         <div style="margin-bottom: 15px;">
-            あなたの名前：<br><input type="text" id="user-name" placeholder="プレイヤー名" style="width: 250px;">
+            あなたの名前：<br><input type="text" id="user-name" placeholder="プレイヤー名" style="width: 250px;" maxlength="40">
         </div>
         <div style="margin-bottom: 15px;">
-            部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: den-gon" style="width: 250px;">
+            部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: den-gon" style="width: 250px;" maxlength="64" pattern="[A-Za-z0-9_-]+">
         </div>
         <p style="font-size: 13px; color: #7f8c8d; max-width: 400px; margin: 0 auto 15px;">※同じパスワードを入力した人と自動的に同じ部屋に入ります。遊ぶには2人以上が必要です！</p>
         <button onclick="connectLobby()">部屋に入る / 作る</button>
@@ -58,7 +76,7 @@
             <div class="step-indicator">ステップ 1/4 : 最初のお題を決めよう！</div>
             <h2>次の人が絵に描きやすい（または描きにくい？）お題を入力してね！</h2>
             <div style="margin: 20px 0;">
-                <input type="text" id="prompt-input" placeholder="例: 空飛ぶペンギン" style="width: 80%; max-width: 400px;">
+                <input type="text" id="prompt-input" placeholder="例: 空飛ぶペンギン" style="width: 80%; max-width: 400px;" maxlength="200">
             </div>
             <button onclick="submitPrompt()" style="background-color: #27ae60; border-color: #1e8449;">入力完了！送信</button>
         </div>
@@ -106,7 +124,7 @@
             </div>
             
             <div style="margin: 15px 0;">
-                <input type="text" id="guess-input" placeholder="例: 空を飛ぶペンギン" style="width: 80%; max-width: 400px;">
+                <input type="text" id="guess-input" placeholder="例: 空を飛ぶペンギン" style="width: 80%; max-width: 400px;" maxlength="200">
             </div>
             <button onclick="submitGuess()" style="background-color: #27ae60; border-color: #1e8449;">推測完了！送信</button>
         </div>

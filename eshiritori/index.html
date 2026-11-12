@@ -7,6 +7,24 @@
     <link rel="stylesheet" href="style.css">
     <script type="module" src="app.js"></script>
     <script src="../corner-mode.js" defer></script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="リアルタイム絵しりとり">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#6d5843">
+    <meta name="description" content="リアルタイム絵しりとり">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="リアルタイム絵しりとり">
+    <meta property="og:description" content="リアルタイム絵しりとり">
+    <meta property="og:image" content="/assets/ogp.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="stylesheet" href="/pwa.css">
+    <script type="module" src="/pwa.js"></script>
 </head>
 <body>
 
@@ -22,10 +40,10 @@
     <div id="screen-setup" class="screen active">
         <h1>🎨 オンライン絵しりとり</h1>
         <div style="margin-bottom: 15px;">
-            あなたの名前：<br><input type="text" id="user-name" placeholder="プレイヤー名" style="width: 250px;">
+            あなたの名前：<br><input type="text" id="user-name" placeholder="プレイヤー名" style="width: 250px;" maxlength="40">
         </div>
         <div style="margin-bottom: 15px;">
-            部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: seiryo123" style="width: 250px;">
+            部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: seiryo123" style="width: 250px;" maxlength="64" pattern="[A-Za-z0-9_-]+">
         </div>
         <p style="font-size: 13px; color: #7f8c8d; max-width: 400px; margin: 0 auto 15px;">※同じパスワードを入力した人と自動的に同じ部屋に入ります。誰もいない、または終わった部屋のパスワードなら新しい部屋をリセットして作るよ！</p>
         <button onclick="connectLobby()">部屋に入る / 作る</button>
@@ -107,7 +125,7 @@
 
     <div id="screen-answer" class="screen">
         <h2>今描いたものの「正解ワード」は？</h2>
-        <input type="text" id="correct-answer" placeholder="例: りんご" style="font-size: 20px; width: 60%; max-width: 300px;"><br><br>
+        <input type="text" id="correct-answer" placeholder="例: りんご" style="font-size: 20px; width: 60%; max-width: 300px;" maxlength="200"><br><br>
         <button onclick="submitAnswer()" style="background-color: #2980b9; border-color:#21618c;">確定して次の人へ送信</button>
     </div>
 
@@ -138,7 +156,7 @@
         
         <!-- コメント入力欄 -->
         <form id="comment-form" onsubmit="event.preventDefault(); window.sendComment();" style="display: flex; gap: 8px;">
-            <input type="text" id="comment-input" placeholder="コメントを入力..." style="flex: 1; text-align: left; padding: 8px 12px;" disabled>
+            <input type="text" id="comment-input" placeholder="コメントを入力..." style="flex: 1; text-align: left; padding: 8px 12px;" disabled maxlength="1000">
             <button type="submit" id="comment-send-btn" style="padding: 6px 16px; font-size: 14px; border-radius: 8px;" disabled>送信</button>
         </form>
     </div>

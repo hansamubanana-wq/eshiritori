@@ -1,18 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, push, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, push, onValue, update, get, ready, onReady, sendInvite, addFriend } from "../sync.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyA1JE1-7hPGNeFCQn3egNwmgmViy79UYHE",
-    authDomain: "eshiritori-64c6c.firebaseapp.com",
-    databaseURL: "https://eshiritori-64c6c-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "eshiritori-64c6c",
-    storageBucket: "eshiritori-64c6c.firebasestorage.app",
-    messagingSenderId: "549200845335",
-    appId: "1:549200845335:web:2d9dc77d1a83c9548c5a52"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+const account = await ready;
+const db = getDatabase();
 
 const raceTexts = [
     "あかいくつはいたおんなのこあのこどこいったにほんにきたよ",
@@ -42,7 +31,7 @@ let raceStartTime = 0;
 let myFinished = false;
 let isTransitioning = false;
 
-document.addEventListener("DOMContentLoaded", () => {
+onReady(() => {
     const saved = localStorage.getItem('username');
     if (saved) document.getElementById('user-name').value = saved;
     const urlParams = new URLSearchParams(window.location.search);
@@ -63,7 +52,7 @@ window.connectLobby = async function() {
 
     myPlayerName = name;
     roomId = room;
-    myPlayerId = "p_" + Math.random().toString(36).substring(2, 10);
+    myPlayerId = account.uid;
     localStorage.setItem('username', name);
 
     const snap = await get(ref(db, RPATH(roomId)));
@@ -169,7 +158,7 @@ window.openLobbyInviteModal = function() {
                     btn.disabled = true;
                     btn.style.backgroundColor = "#7f8c8d";
                     btn.style.borderBottom = "none";
-                    set(push(ref(db, `users/${friendId}/invites`)), {
+                    sendInvite(friendId, {
                         fromName: myPlayerName,
                         roomId: roomId,
                         gameType: "typing",
@@ -299,7 +288,7 @@ window.onTypeInput = function() {
     }
     const progress = correctCount / target.length;
 
-    // Throttle Firebase updates
+    // Throttle サーバー updates
     if (progressUpdateTimeout) clearTimeout(progressUpdateTimeout);
     progressUpdateTimeout = setTimeout(() => {
         update(ref(db, `${RPATH(roomId)}/players/${myPlayerId}`), { progress });

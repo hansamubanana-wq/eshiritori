@@ -1,18 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, update, get, remove, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, onValue, update, get, remove, push, ready, onReady, sendInvite, addFriend } from "../sync.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyA1JE1-7hPGNeFCQn3egNwmgmViy79UYHE",
-    authDomain: "eshiritori-64c6c.firebaseapp.com",
-    databaseURL: "https://eshiritori-64c6c-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "eshiritori-64c6c",
-    storageBucket: "eshiritori-64c6c.firebasestorage.app",
-    messagingSenderId: "549200845335",
-    appId: "1:549200845335:web:2d9dc77d1a83c9548c5a52"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+const account = await ready;
+const db = getDatabase();
 
 let roomId = "";
 let myPlayerName = "";
@@ -23,7 +12,7 @@ let roomState = null;
 let lastSyncStep = -1;
 
 // アカウント名自動入力とURLクエリによる自動入室
-document.addEventListener("DOMContentLoaded", () => {
+onReady(() => {
     const savedName = localStorage.getItem('username');
     if (savedName) {
         document.getElementById('user-name').value = savedName;
@@ -60,14 +49,15 @@ window.connectLobby = function() {
         alert("なまえ と 部屋パスワード をいれてね！");
         return;
     }
-    myPlayerId = "p_" + Math.random().toString(36).substring(2, 10);
+    myPlayerId = account.uid;
     
     const roomRef = ref(db, 'rooms-telephone/' + roomId);
     get(roomRef).then((snapshot) => {
         if (snapshot.exists()) {
             let data = snapshot.val();
             // 古い・または終了した部屋の場合はホストがリセット
-            if (data.status === "result" || data.status === "playing") {
+            if (data.status === "playing") { alert("このゲームはすでに進行中です。"); return; }
+            if (data.status === "result") {
                 isHost = true;
                 createRoom(); 
             } else {
@@ -529,8 +519,7 @@ window.openLobbyInviteModal = function() {
                         inviteBtn.style.backgroundColor = "#7f8c8d";
                         inviteBtn.style.borderBottom = "none";
                         
-                        const inviteRef = push(ref(db, `users/${friendId}/invites`));
-                        set(inviteRef, {
+                        sendInvite(friendId, {
                             fromName: myPlayerName,
                             roomId: roomId,
                             gameType: "telephone",

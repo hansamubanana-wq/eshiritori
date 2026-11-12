@@ -7,6 +7,24 @@
     <link rel="stylesheet" href="style.css">
     <script type="module" src="app.js"></script>
     <script src="../corner-mode.js" defer></script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="クイズバトル">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#6d5843">
+    <meta name="description" content="クイズバトル">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="クイズバトル">
+    <meta property="og:description" content="クイズバトル">
+    <meta property="og:image" content="/assets/ogp.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="stylesheet" href="/pwa.css">
+    <script type="module" src="/pwa.js"></script>
 </head>
 <body>
 <div class="container">
@@ -17,11 +35,11 @@
         <p>全員同時に4択クイズに挑戦！早く正解すればするほど高得点！</p>
         <div style="margin-bottom:12px;">
             あなたの名前：<br>
-            <input type="text" id="user-name" placeholder="プレイヤー名" style="width:250px;">
+            <input type="text" id="user-name" placeholder="プレイヤー名" style="width:250px;" maxlength="40">
         </div>
         <div style="margin-bottom:12px;">
             部屋のパスワード：<br>
-            <input type="text" id="room-id" placeholder="例: quiz456" style="width:250px;">
+            <input type="text" id="room-id" placeholder="例: quiz456" style="width:250px;" maxlength="64" pattern="[A-Za-z0-9_-]+">
         </div>
         <button onclick="connectLobby()">部屋に入る / 作る</button>
         <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>

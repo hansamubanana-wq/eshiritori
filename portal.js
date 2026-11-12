@@ -1,25 +1,14 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, update, get, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, onValue, update, get, remove, onDisconnect, ready, onReady, sendInvite, addFriend } from "./sync.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyA1JE1-7hPGNeFCQn3egNwmgmViy79UYHE",
-    authDomain: "eshiritori-64c6c.firebaseapp.com",
-    databaseURL: "https://eshiritori-64c6c-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "eshiritori-64c6c",
-    storageBucket: "eshiritori-64c6c.firebasestorage.app",
-    messagingSenderId: "549200845335",
-    appId: "1:549200845335:web:2d9dc77d1a83c9548c5a52"
-};
+const account = await ready;
+const db = getDatabase();
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-let myUserId = localStorage.getItem('userId') || "";
-let myUserName = localStorage.getItem('username') || "";
-let myFriendCode = localStorage.getItem('friendCode') || "";
+let myUserId = account.uid;
+let myUserName = (await get(ref(db, `users/${myUserId}`))).val()?.name || "";
+let myFriendCode = account.friendCode;
 let activeListeners = {}; // フレンド状態監視用のリスナー管理
 
-document.addEventListener('DOMContentLoaded', () => {
+onReady(() => {
     initAccount();
 
     document.getElementById('register-profile-btn').addEventListener('click', registerProfile);
@@ -55,35 +44,13 @@ function showProfileDisplay() {
 }
 
 // プロフィール登録
-function registerProfile() {
-    const nameInput = document.getElementById('profile-name-input').value.trim();
-    if (!nameInput) {
-        alert("名前を入力してください！");
-        return;
-    }
-
-    myUserId = "u_" + Math.random().toString(36).substring(2, 12);
-    myUserName = nameInput;
-    myFriendCode = "FR-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-
-    // データベースに登録
-    const userRef = ref(db, `users/${myUserId}`);
-    const codeRef = ref(db, `friend-codes/${myFriendCode}`);
-
-    set(codeRef, myUserId).then(() => {
-        set(userRef, {
-            name: myUserName,
-            friendCode: myFriendCode,
-            status: "online",
-            lastActive: Date.now()
-        }).then(() => {
-            localStorage.setItem('userId', myUserId);
-            localStorage.setItem('username', myUserName);
-            localStorage.setItem('friendCode', myFriendCode);
-
-            initAccount();
-        });
-    });
+async function registerProfile() {
+    const name = document.getElementById('profile-name-input').value.trim();
+    if (!name) { alert("名前を入力してください！"); return; }
+    await update(ref(db, `users/${myUserId}`), { name, status: "online", lastActive: Date.now() });
+    myUserName = name;
+    localStorage.setItem('username', name);
+    initAccount();
 }
 
 // 名前変更
@@ -100,7 +67,7 @@ function editProfileName() {
     localStorage.setItem('username', myUserName);
     document.getElementById('display-username').innerText = myUserName;
 
-    // Firebase更新
+    // サーバー更新
     update(ref(db, `users/${myUserId}`), { name: myUserName });
 }
 
@@ -135,40 +102,15 @@ function updatePresence() {
 }
 
 // フレンド追加（片方が入力したら両方登録される相互自動方式に変更）
-function addFriendByCode() {
-    const codeInput = document.getElementById('friend-code-input').value.trim().toUpperCase();
-    if (!codeInput) {
-        alert("フレンドコードを入力してください！");
-        return;
-    }
-
-    if (codeInput === myFriendCode) {
-        alert("自分自身をフレンドに追加することはできません！");
-        return;
-    }
-
-    document.getElementById('friend-code-input').value = "";
-
-    // コードからIDを検索
-    get(ref(db, `friend-codes/${codeInput}`)).then((snapshot) => {
-        if (snapshot.exists()) {
-            const friendId = snapshot.val();
-            
-            // 自分のフレンドリストに相手を追加
-            set(ref(db, `users/${myUserId}/friends/${friendId}`), true).then(() => {
-                
-                // 【追加機能】同時に相手のフレンドリストにも自分を追加
-                set(ref(db, `users/${friendId}/friends/${myUserId}`), true).then(() => {
-                    alert("フレンドを追加しました！お互いのリストに同期されたよ。");
-                }).catch(err => {
-                    console.error("相手側への自動登録に失敗したよ: ", err);
-                });
-
-            });
-        } else {
-            alert("フレンドコードが見つかりません。入力内容を確認してください。");
-        }
-    });
+async function addFriendByCode() {
+    const input = document.getElementById('friend-code-input');
+    const code = input.value.trim().toUpperCase();
+    if (!code) { alert("フレンドコードを入力してください！"); return; }
+    try {
+        await addFriend(code);
+        input.value = "";
+        alert("フレンドを追加しました！お互いのリストに同期されたよ。");
+    } catch { alert("フレンドコードを確認してください。"); }
 }
 
 // フレンドのリアルタイム監視
@@ -177,10 +119,10 @@ function listenToFriends() {
     onValue(friendsRef, (snapshot) => {
         const friends = snapshot.val();
         const listEl = document.getElementById('friends-list');
-        listEl.innerHTML = "";
+        listEl.querySelectorAll('[data-empty]').forEach(el => el.remove());
 
         if (!friends) {
-            listEl.innerHTML = '<div style="color: #7f6e64; font-size: 12px; text-align: center; padding: 20px 0;">フレンドがまだいません</div>';
+            listEl.innerHTML = '<div data-empty style="color: #7f6e64; font-size: 12px; text-align: center; padding: 20px 0;">フレンドがまだいません</div>';
             // 古いリスナーを解放
             Object.keys(activeListeners).forEach(id => {
                 activeListeners[id]();
@@ -208,6 +150,7 @@ function listenToFriends() {
             if (!friends[id]) {
                 activeListeners[id]();
                 delete activeListeners[id];
+                document.getElementById(`friend-row-${id}`)?.remove();
             }
         });
     });

@@ -1,0 +1,11 @@
+html { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; }
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; touch-action: manipulation; max-width: 100%; box-sizing: border-box; }
+button, a { touch-action: manipulation; }
+canvas { touch-action: none; }
+img { -webkit-user-drag: none; }
+.screen, .portal-container, .container { box-sizing: border-box; min-width: 0; }
+@media (max-width: 480px) {
+    h1 { overflow-wrap: anywhere; }
+    .modal-content { box-sizing: border-box; max-width: calc(100vw - 24px); }
+}

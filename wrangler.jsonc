@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "eshiritori",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-11-04",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/ws"],
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOMS", "class_name": "Room" },
+      { "name": "ACCOUNTS", "class_name": "Accounts" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room", "Accounts"] }],
+  "vars": { "PUBLIC_ORIGIN": "https://eshiritori.hansamubanana.workers.dev" },
+  "observability": { "enabled": false }
+}
