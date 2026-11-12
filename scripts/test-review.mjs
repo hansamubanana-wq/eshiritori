@@ -1,0 +1,113 @@
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
+import { Client, until } from './ws-client.mjs';
+const bundle = await build({ entryPoints: ['scripts/lifecycle-harness.ts'], bundle: true, write: false, format: 'esm', platform: 'neutral', external: ['cloudflare:workers'] });
+const mf = new Miniflare(convertV4MiniflareOptions({ name: 'review-test', modules: true, script: bundle.outputFiles[0].text, compatibilityDate: '2026-11-04',
+  bindings: { PUBLIC_ORIGIN: '' }, durableObjects: { ROOMS: { className: 'Room', useSQLite: true }, ACCOUNTS: { className: 'Accounts', useSQLite: true } }, durableObjectsPersist: false, unsafeInspectDurableObjects: true }));
+const base = (await mf.ready).origin, clients = [];
+const bindings = await mf.getBindings(), accounts = bindings.ACCOUNTS.get(bindings.ACCOUNTS.idFromName('accounts'));
+const fixture = m => accounts.fetch('https://internal/test-fixture', { method: 'POST', body: JSON.stringify(m) }).then(r => r.json());
+const open = async (game, room, options = {}) => { const c = await Client.open(game, room, base, base, options); clients.push(c); return c; };
+const calls = () => mf.dispatchFetch(`${base}/test-room-calls`).then(r => r.json()).then(r => r.roomCalls);
+const key = () => `k_${crypto.randomUUID().replaceAll('-', '')}`;
+const seed = id => ({ status: 'waiting', currentIndex: 0, startChar: 'a', endChar: 'b', playersOrder: [id], players: { [id]: { name: 'Untrusted game name', isHost: true } }, gameData: [], canvasData: '' });
+try {
+  const account = await open(undefined, undefined, { ip: '192.0.2.1' }), alice = await account.auth();
+  await account.request('update', { path: `users/${alice.uid}`, value: { name: 'Verified Alice' } });
+  const initialCalls = await calls();
+  for (let i = 0; i < 4; i++) await assert.rejects(open('rooms', `unauthorized-${i}`, { ip: '192.0.2.20' }), /401/);
+  await assert.rejects(open('rooms', 'forged-ticket', { ticket: 'f'.repeat(64), ip: '192.0.2.20' }), /401/);
+  assert.equal(await calls(), initialCalls);
+  const ticket = await account.request('roomTicket', { game: 'rooms', room: 'ticket-bound' });
+  await assert.rejects(open('rooms', 'other-room', { ticket, ip: '192.0.2.1' }), /401/);
+  await assert.rejects(open('rooms', 'ticket-bound', { ticket, ip: '192.0.2.2' }), /401/);
+  const room = await open('rooms', 'ticket-bound', { ticket, ip: '192.0.2.1' }); await room.auth(alice);
+  await assert.rejects(open('rooms', 'ticket-bound', { ticket, ip: '192.0.2.1' }), /401/);
+  const expired = await account.request('roomTicket', { game: 'rooms', room: 'expired-ticket' });
+  await fixture({ op: 'expireTicket', ticket: expired });
+  await assert.rejects(open('rooms', 'expired-ticket', { ticket: expired, ip: '192.0.2.1' }), /401/);
+  await fixture({ op: 'quota', key: 'room-attempt:192.0.2.20', count: 90 });
+  const beforeFlood = await calls(); await assert.rejects(open('rooms', 'ip-flood', { ip: '192.0.2.20' }), /429/); assert.equal(await calls(), beforeFlood);
+  await fixture({ op: 'fillRooms' });
+  const capped = await account.request('roomTicket', { game: 'rooms', room: 'over-cap' });
+  const beforeCap = await calls(); await assert.rejects(open('rooms', 'over-cap', { ticket: capped, ip: '192.0.2.1' }), /429/); assert.equal(await calls(), beforeCap);
+  await fixture({ op: 'clearRooms' });
+  const replacementTicket = await account.request('roomTicket', { game: 'rooms', room: 'admission-race' });
+  const raced = await Promise.allSettled([open('rooms', 'admission-race', { ticket: replacementTicket, ip: '192.0.2.1' }), open('rooms', 'admission-race', { ticket: replacementTicket, ip: '192.0.2.1' })]);
+  assert.equal(raced.filter(r => r.status === 'fulfilled').length, 1);
+  console.log('PASS review 1: pre-DO auth; forged/replayed/expired/wrong-room/wrong-IP tickets, IP rate and 512-room cap rejected without calling room DO');
+
+  const held = [];
+  for (let i = 0; i < 16; i++) held.push(await open(undefined, undefined, { ip: '192.0.2.30' }));
+  await assert.rejects(open(undefined, undefined, { ip: '192.0.2.30' }), /429/);
+  held.forEach(c => c.close());
+  await fixture({ op: 'lateAlarm' });
+  const idle = await open(undefined, undefined, { ip: '192.0.2.31' }), idleId = await idle.auth();
+  assert((await fixture({})).nextAlarm <= Date.now() + 30000, 'new connection must bring a maintenance-only alarm forward');
+  const aged = await fixture({ op: 'ageSocket', ip: '192.0.2.31', remaining: 5000 });
+  const lastAction = aged.sockets.find(s => s.uid === idleId.uid).lastAction;
+  await idle.request('update', { path: `users/${idleId.uid}`, value: { status: 'online', lastActive: Date.now() } });
+  assert.equal((await fixture({})).sockets.find(s => s.uid === idleId.uid).lastAction, lastAction);
+  await fixture({ op: 'ageSocket', ip: '192.0.2.31', alarm: true }); await until(() => idle.socket.readyState !== 1, 'idle disconnect');
+  await assert.rejects(idle.request('get', { path: `users/${idleId.uid}` }), /closed|not open|connection/i);
+  const absolute = await open(undefined, undefined, { ip: '192.0.2.32' }); await absolute.auth();
+  await fixture({ op: 'ageSocket', ip: '192.0.2.32', absolute: true, alarm: true }); await until(() => absolute.socket.readyState !== 1, 'absolute connection deadline');
+  console.log('PASS review 2: per-IP concurrent cap; heartbeat does not extend idle; idle/absolute connection expiry enforced');
+
+  await fixture({ op: 'fillAccounts', ip: '192.0.2.40' });
+  const ipAccount = await open(undefined, undefined, { ip: '192.0.2.40' }); await assert.rejects(ipAccount.auth(), /ip_accounts_full/); ipAccount.close();
+  await fixture({ op: 'clearAccounts' }); await fixture({ op: 'fillAccounts' });
+  const global = await open(undefined, undefined, { ip: '192.0.2.41' }); await assert.rejects(global.auth(), /accounts_full/); global.close();
+  await fixture({ op: 'clearAccounts' });
+  const stale = await open(undefined, undefined, { ip: '192.0.2.42' }), staleId = await stale.auth();
+  await account.request('addFriend', { code: staleId.friendCode });
+  await fixture({ op: 'expireAccount', uid: staleId.uid, alarm: true });
+  assert.equal(await account.request('get', { path: `friend-codes/${staleId.friendCode}` }), null);
+  assert.equal((await account.request('get', { path: `users/${alice.uid}/friends` }))[staleId.uid], undefined);
+  const invalidResume = await open(undefined, undefined, { ip: '192.0.2.42' }); await assert.rejects(invalidResume.auth(staleId), /invalid_credentials/);
+  console.log('PASS review 3: 10,000 total / 32 per-IP account caps; 30-day deletion removes code, friend edge and credential access');
+
+  const root = 'rooms/ticket-bound'; await room.request('set', { path: root, value: seed(alice.uid) });
+  await room.request('subscribe', { path: root, sub: 'one' });
+  for (let i = 0; i < 3; i++) await assert.rejects(room.request('subscribe', { path: root, sub: `duplicate${i}` }), /duplicate_subscription/);
+  const png = 'data:image/png;base64,' + 'A'.repeat(256 * 1024);
+  for (let i = 0; i < 4; i++) await room.request('update', { path: root, value: { [`gameData/${i}`]: { player: 'Alice', image: png, answer: 'a' } } });
+  room.frames.length = 0;
+  await room.request('update', { path: root, value: { startChar: 'c' } });
+  const patch = room.frames.find(f => f.patches); assert.deepEqual(patch.subs, ['one']); assert(Buffer.byteLength(JSON.stringify(patch)) < 200);
+  await mf.unsafeEvictDurableObject('review-test', 'Room', { name: root, webSockets: 'hibernate' });
+  await assert.rejects(room.request('subscribe', { path: root, sub: 'duplicateAfterWake' }), /duplicate_subscription/);
+  await room.request('update', { path: root, value: { endChar: 'd' } });
+  await until(() => room.events.some(e => e.value?.endChar === 'd'), 'delta after hibernation');
+  await room.request('unsubscribe', { sub: 'one' });
+  let backpressure = false;
+  for (let i = 0; i < 20; i++) { try { await room.request('get', { path: root }); } catch (e) { assert.match(e.message, /send_rate_limited/); backpressure = true; break; } }
+  assert(backpressure);
+  const reader = await open('rooms', 'ticket-bound', { identity: alice, account, ip: '192.0.2.1' }); await reader.auth(alice);
+  const stub = bindings.ROOMS.get(bindings.ROOMS.idFromName(root)); await stub.fetch('https://internal/test-budget');
+  await assert.rejects(reader.request('get', { path: root }), /send_rate_limited/);
+  console.log('PASS review 4: duplicate subscriptions rejected, tiny delta sent once; per-connection and shared room outgoing byte budgets enforced');
+
+  const chat = await open('rooms', 'chat-test', { identity: alice, account, ip: '192.0.2.1' }); await chat.auth(alice);
+  const chatRoot = 'rooms/chat-test'; await chat.request('set', { path: chatRoot, value: seed(alice.uid) });
+  for (const field of [{ sender: 'Impostor' }, { uid: staleId.uid }, { type: 'system' }, { name: 'Impostor' }, { timestamp: 0 }]) {
+    await assert.rejects(chat.request('set', { path: `${chatRoot}/comments/${key()}`, value: { text: 'forged', ...field } }), /forbidden_chat_metadata|invalid_path/);
+  }
+  await chat.request('set', { path: `${chatRoot}/comments/${key()}`, value: { text: 'real message' } });
+  const saved = Object.values((await chat.request('get', { path: chatRoot })).comments)[0]; assert.equal(saved.sender, 'Verified Alice'); assert.equal(saved.uid, alice.uid); assert(saved.timestamp > 0);
+  await account.request('update', { path: `users/${alice.uid}`, value: { name: 'Renamed Alice' } });
+  await chat.request('set', { path: `${chatRoot}/comments/${key()}`, value: { text: 'after rename' } });
+  assert.equal(Object.values((await chat.request('get', { path: chatRoot })).comments).at(-1).sender, 'Renamed Alice');
+  const wolf = await open('word-wolf-rooms', 'name-test', { identity: alice, account, ip: '192.0.2.1' }); await wolf.auth(alice);
+  const wolfRoot = 'word-wolf-rooms/name-test'; await wolf.request('set', { path: wolfRoot, value: { phase: 'lobby', hostId: alice.uid, createdAt: Date.now() } });
+  await assert.rejects(wolf.request('set', { path: `${wolfRoot}/chat/${key()}`, value: { text: 'forged', name: 'Impostor' } }), /forbidden_chat_metadata/);
+  await wolf.request('set', { path: `${wolfRoot}/chat/${key()}`, value: { text: 'real wolf chat' } });
+  const wolfMessage = Object.values((await wolf.request('get', { path: wolfRoot })).chat)[0]; assert.equal(wolfMessage.name, 'Renamed Alice'); assert.equal(wolfMessage.uid, alice.uid);
+  const quiz = await open('rooms-quiz', 'system-test', { identity: alice, account, ip: '192.0.2.1' }); await quiz.auth(alice);
+  const quizRoot = 'rooms-quiz/system-test'; await quiz.request('set', { path: quizRoot, value: { status: 'waiting', currentIndex: 0, currentWord: '', timerEnd: 0, playersOrder: [alice.uid], players: { [alice.uid]: { name: 'Alice', isHost: true, score: 0, guessedCorrectly: false } }, canvasData: '' } });
+  for (const type of ['system', 'correct', 'chat']) await assert.rejects(quiz.request('set', { path: `${quizRoot}/messages/${key()}`, value: { text: 'forged', sender: 'System', type } }), /forbidden_chat_metadata/);
+  await quiz.request('update', { path: quizRoot, value: { drawerId: alice.uid, currentWord: 'apple', timerEnd: Date.now() + 60000, status: 'playing' } });
+  assert(Object.values((await quiz.request('get', { path: quizRoot })).messages).some(m => m.type === 'system'));
+  console.log('PASS review 5: metadata/system forgery rejected; authenticated UID/current profile name stamped; system messages derived only by server');
+} finally { clients.forEach(c => c.close()); await mf.dispose(); }

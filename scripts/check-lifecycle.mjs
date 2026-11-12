@@ -9,12 +9,12 @@ const mf = new Miniflare(convertV4MiniflareOptions({ name: 'lifecycle-test', mod
 }));
 const base = (await mf.ready).origin;
 const clients = [];
-const open = async (game, room) => { const c = await Client.open(game, room, base, base); clients.push(c); return c; };
+const open = async (game, room, identity) => { const c = await Client.open(game, room, base, base, { identity }); clients.push(c); return c; };
 const name = 'rooms/lifecycle', root = name;
 const seed = uid => ({ status: 'waiting', currentIndex: 0, startChar: 'あ', endChar: 'ん', playersOrder: [uid], players: { [uid]: { name: 'Alice', isHost: true } }, gameData: [], canvasData: '' });
 try {
     const account = await open(); const identity = await account.auth();
-    const a = await open('rooms', 'lifecycle'); await a.auth(identity);
+    const a = await open('rooms', 'lifecycle', identity); await a.auth(identity);
     await a.request('set', { path: root, value: seed(identity.uid) });
     await a.request('subscribe', { path: root, sub: 'state' });
     const bindings = await mf.getBindings(); const stub = bindings.ROOMS.get(bindings.ROOMS.idFromName(name));
@@ -27,7 +27,7 @@ try {
     console.log('PASS lifecycle: SQLite state, authentication and subscriptions survive DO hibernation; fresh alarm reschedules');
     const expired = await stub.fetch('https://internal/test-expire').then(r => r.json()); assert.equal(expired.cleared, true);
     await until(() => a.socket.readyState !== 1, 'expiry closes room socket');
-    const replacement = await open('rooms', 'lifecycle'); await replacement.auth(identity);
+    const replacement = await open('rooms', 'lifecycle', identity); await replacement.auth(identity);
     assert.equal(await replacement.request('get', { path: root }), null);
     await replacement.request('set', { path: root, value: seed(identity.uid) });
     assert.equal((await replacement.request('get', { path: root })).status, 'waiting');
@@ -35,9 +35,16 @@ try {
     // Hard connection bounds, independently of browser controls.
     for (let i = 0; i < 7; i++) { const c = await open(); await c.auth(identity); }
     const ninth = await open(); await assert.rejects(ninth.auth(identity), /connections_full/);
+    for (const c of clients) if (c !== replacement) c.close();
+    await new Promise(r => setTimeout(r, 50));
     const full = [];
-    for (let i = 0; i < 32; i++) full.push(await open('rooms', 'connection-bound'));
-    await assert.rejects(open('rooms', 'connection-bound'), /429/);
+    let member;
+    for (let i = 0; i < 32; i++) {
+        if (i % 8 === 0) { const account = await open(); member = await account.auth(); account.close(); }
+        full.push(await open('rooms', 'connection-bound', member));
+    }
+    const extra = await open(); const extraId = await extra.auth();
+    await assert.rejects(open('rooms', 'connection-bound', extraId), /429/);
     full.forEach(c => c.close());
     console.log('PASS limits: 8 connections/user and 32 connections/room enforced');
     const image = 'data:image/png;base64,' + 'A'.repeat(512 * 1024 - 40);

@@ -19,11 +19,11 @@ const pushKey = /^k_[a-f0-9]{32}$/;
 const commonPlayer = { name: text(40), joinedAt: num(), isHost: bool };
 const players = (extra = {}): Rule => map(obj({ ...commonPlayer, ...extra }), playerKey, LIMITS.players);
 const order = list(id, LIMITS.players);
-const message = obj({ sender: text(40), text: text(), timestamp: num(), type: en('chat', 'system', 'correct') });
+const message = obj({ uid: id, sender: text(40), text: text(), timestamp: num(), type: en('chat', 'system', 'correct') });
 export const SCHEMAS: Record<string, Rule> = {
   rooms: obj({ status: en('waiting', 'playing', 'result'), currentIndex: num(64), startChar: text(1), endChar: text(1), playersOrder: order,
     players: players(), gameData: list(obj({ player: text(40), image, answer: text(200) }), 64), canvasData: image,
-    comments: map(obj({ sender: text(40), text: text(), timestamp: num() }), pushKey, 200) }),
+    comments: map(obj({ uid: id, sender: text(40), text: text(), timestamp: num() }), pushKey, 200) }),
   'rooms-quiz': obj({ status: en('waiting', 'playing', 'result'), currentIndex: num(32), currentWord: text(200), timerEnd: num(), drawerId: id,
     playersOrder: order, players: players({ score: num(1000000), guessedCorrectly: bool }), canvasData: image, messages: map(message, pushKey, 200) }),
   'rooms-telephone': obj({ status: en('waiting', 'playing', 'result'), currentStep: num(16), playersOrder: order,
@@ -31,7 +31,7 @@ export const SCHEMAS: Record<string, Rule> = {
   'word-wolf-rooms': obj({ phase: en('lobby', 'word_reveal', 'discussion', 'voting', 'result'), hostId: id, createdAt: num(),
     players: players({ role: en('', 'wolf', 'citizen'), word: text(100), ready: bool, vote: { kind: 'vote' } }),
     wordPair: obj({ common: text(100), wolf: text(100) }), discussionEndTime: num(),
-    chat: map(obj({ name: text(40), text: text(), ts: num() }), pushKey, 200) }),
+    chat: map(obj({ uid: id, name: text(40), text: text(), ts: num() }), pushKey, 200) }),
   'typing-race-rooms': obj({ phase: en('lobby', 'racing', 'result'), hostId: id, createdAt: num(), players: players({ progress: num(1), finishTime: num(3600) }), raceText: text(2000), startTime: num() }),
   'quiz-battle-rooms': obj({ phase: en('lobby', 'question', 'result'), hostId: id, createdAt: num(), players: players({ score: num(1000000) }),
     questions: list(obj({ q: text(500), opts: list(text(200), 4), a: num(3) }), 10), currentQuestion: num(10), questionStartTime: num(), answers: map(num(3), playerKey, 16) }),

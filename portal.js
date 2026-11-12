@@ -1,4 +1,4 @@
-import { getDatabase, ref, set, onValue, update, get, remove, onDisconnect, ready, onReady, sendInvite, addFriend } from "./sync.js";
+import { getDatabase, ref, onValue, update, get, remove, ready, onReady, addFriend } from "./sync.js";
 
 const account = await ready;
 const db = getDatabase();
@@ -21,7 +21,6 @@ onReady(() => {
 function initAccount() {
     if (myUserId && myUserName && myFriendCode) {
         showProfileDisplay();
-        updatePresence();
         listenToFriends();
         listenToInvites();
     } else {
@@ -80,26 +79,8 @@ function copyFriendCode() {
     });
 }
 
-// リアルタイムオンライン状況の同期
-function updatePresence() {
-    const userStatusRef = ref(db, `users/${myUserId}/status`);
-    const userActiveRef = ref(db, `users/${myUserId}/lastActive`);
+// 在席通知と無操作後の再接続は sync.js で管理する。
 
-    // タブが閉じられたらオフラインにする
-    onDisconnect(userStatusRef).set("offline");
-
-    // 定期的にステータスをオンラインに更新
-    setInterval(() => {
-        if (myUserId) {
-            set(userStatusRef, "online");
-            set(userActiveRef, Date.now());
-        }
-    }, 20000);
-
-    // 初回起動時
-    set(userStatusRef, "online");
-    set(userActiveRef, Date.now());
-}
 
 // フレンド追加（片方が入力したら両方登録される相互自動方式に変更）
 async function addFriendByCode() {

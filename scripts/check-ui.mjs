@@ -6,13 +6,14 @@ const browser = await chromium.launch({ headless: true });
 const errors = [], results = [];
 const contexts = [];
 await mkdir('test-results', { recursive: true });
-async function newClient() {
+async function newClient(expiredIdentity = false) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } }); contexts.push(context);
     const page = await context.newPage();
     page.on('pageerror', e => errors.push(`${page.url()}: ${e.message}`));
     page.on('console', e => { if (e.type() === 'error') errors.push(`${page.url()}: ${e.text()}`); });
     page.on('dialog', dialog => { errors.push(`${page.url()}: dialog: ${dialog.message()}`); dialog.dismiss(); });
     await page.addInitScript(() => window.addEventListener('syncerror', e => { console.error('syncerror:', e.detail.message); }));
+    if (expiredIdentity) await page.addInitScript(() => localStorage.setItem('eshiritori.identity', JSON.stringify({ uid: `u_${'f'.repeat(32)}`, token: '0'.repeat(64), friendCode: 'FR-000000000000' })));
     await page.goto(BASE);
     await page.waitForFunction(() => localStorage.getItem('eshiritori.identity'));
     return page;
@@ -133,9 +134,14 @@ try {
         if (third) await third.context().close();
     }
     await a.goto(BASE); await a.evaluate(() => navigator.serviceWorker.ready);
-    const cache = await a.evaluate(async () => { const c = await caches.open('eshiritori-v1'); return (await c.keys()).map(r => new URL(r.url).pathname); });
+    const cache = await a.evaluate(async () => { const c = await caches.open('eshiritori-v2'); return (await c.keys()).map(r => new URL(r.url).pathname); });
     assert(cache.includes('/word-wolf/app.js') && !cache.some(path => path.includes('/ws')));
     results.push('PWA: service worker installed, seven games cached, /ws never cached');
+    const recovered = await newClient(true);
+    await recovered.locator('#profile-setup-view').waitFor({ state: 'visible' });
+    assert.notEqual(await recovered.evaluate(() => JSON.parse(localStorage.getItem('eshiritori.identity')).uid), `u_${'f'.repeat(32)}`);
+    results.push('Account expiry: invalid saved credential is replaced by a fresh identity without console errors');
+    await recovered.context().close();
     assert.deepEqual(errors, []);
     await writeFile('test-results/ui-results.json', JSON.stringify({ base: BASE, results, errors }, null, 2));
     console.log(`PASS ${results.length} UI checks; no console errors; phone/tablet/desktop layouts`);

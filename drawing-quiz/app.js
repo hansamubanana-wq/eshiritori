@@ -279,22 +279,7 @@ function startNextRound() {
         updates[`players/${pId}/guessedCorrectly`] = false;
     });
 
-    update(ref(db, 'rooms-quiz/' + roomId), updates).then(() => {
-        // システムメッセージ送信
-        const nextDrawerName = roomState.players[nextDrawerId].name;
-        sendSystemMessage(`【第 ${curIdx + 1} ラウンド】${nextDrawerName} さんがお絵描きする番です！`);
-    });
-}
-
-// システムメッセージ送信
-function sendSystemMessage(text, type = "system") {
-    const messagesRef = ref(db, `rooms-quiz/${roomId}/messages`);
-    push(messagesRef, {
-        sender: "システム",
-        text: text,
-        type: type,
-        timestamp: Date.now()
-    });
+    update(ref(db, 'rooms-quiz/' + roomId), updates);
 }
 
 // ゲーム画面同期
@@ -414,7 +399,7 @@ function handleTimeOver() {
     // ホストまたは描き手が次のラウンドへの移行を指示
     if (myPlayerId === roomState.drawerId) {
         isTransitioningRound = true;
-        sendSystemMessage(`時間切れ！正解は「${roomState.currentWord}」でした。`, "system");
+
         
         // 1.5秒待ってから次のターンへ
         setTimeout(() => {
@@ -463,16 +448,12 @@ window.submitGuess = function() {
 
             // 早い順で得点を決定
             let earnedPoints = 100;
-            let rankText = "1位";
             if (correctCount === 1) {
                 earnedPoints = 80;
-                rankText = "2位";
             } else if (correctCount === 2) {
                 earnedPoints = 60;
-                rankText = "3位";
             } else if (correctCount >= 3) {
                 earnedPoints = 50;
-                rankText = "4位以降";
             }
 
             const newScore = (data.players[myPlayerId].score || 0) + earnedPoints;
@@ -485,7 +466,7 @@ window.submitGuess = function() {
             updates[`players/${drawerId}/score`] = newDrawerScore;
 
             update(ref(db, 'rooms-quiz/' + roomId), updates).then(() => {
-                sendSystemMessage(`🎉 ${myPlayerName} さんが正解しました！ (${rankText}: +${earnedPoints}pt / 描き手 +50pt)`, "correct");
+
 
                 // 全員が正解したかチェック
                 checkAllGuessed();
@@ -494,12 +475,7 @@ window.submitGuess = function() {
     } else {
         // 不正解チャット送信
         const messagesRef = ref(db, `rooms-quiz/${roomId}/messages`);
-        push(messagesRef, {
-            sender: myPlayerName,
-            text: guessText,
-            type: "chat",
-            timestamp: Date.now()
-        });
+        push(messagesRef, { text: guessText });
     }
 }
 
@@ -519,7 +495,7 @@ function checkAllGuessed() {
 
         if (allCorrect) {
             isTransitioningRound = true;
-            sendSystemMessage("全員正解しました！次のラウンドに進みます。", "system");
+
             if (countdownInterval) clearInterval(countdownInterval);
             
             setTimeout(() => {

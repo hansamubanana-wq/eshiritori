@@ -586,9 +586,7 @@ window.sendComment = function() {
 
     const commentsRef = push(ref(db, `rooms/${roomId}/comments`));
     set(commentsRef, {
-        sender: myPlayerName,
-        text: commentText,
-        timestamp: Date.now()
+        text: commentText
     }).then(() => {
         inputEl.value = ""; 
     }).catch((err) => {

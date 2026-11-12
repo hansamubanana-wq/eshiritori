@@ -1,18 +1,24 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from './index';
 import { GAME_TYPES, mutations, roomCode, SCHEMAS, uid, validate } from './schema';
-import { attachment, assert, bytes, fail, LIMITS, parse, parts, plain, read, send, write, type Attachment } from './wire';
+import { attachment, assert, bytes, fail, LIMITS, parse, parts, plain, read, boundedSend, subscription, saveAttachment, write, type Attachment, type Bucket } from './wire';
+import { diff, overlaps, type Patch } from './patch';
 
 export class Room extends DurableObject<Env> {
+  private messages: Promise<unknown> = Promise.resolve();
+  private queued = 0;
   private game = '';
   private code = '';
   private data: any = null;
   private host = '';
   private members: Record<string, boolean> = {};
   private touched = 0;
+  private out: Bucket = { tokens: LIMITS.roomOutgoingBurst, tick: Date.now() };
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS room (id INTEGER PRIMARY KEY, game TEXT, code TEXT, state TEXT, host TEXT, members TEXT, touched INTEGER)');
+    ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS outbound (id INTEGER PRIMARY KEY, tokens REAL, tick INTEGER)');
+    const budget = ctx.storage.sql.exec<{tokens:number; tick:number}>('SELECT tokens, tick FROM outbound WHERE id = 1').toArray()[0]; if (budget) this.out = budget;
     const row = ctx.storage.sql.exec<any>('SELECT * FROM room WHERE id = 1').toArray()[0];
     if (row) {
       this.game = row.game; this.code = row.code; this.data = JSON.parse(row.state);
@@ -26,58 +32,67 @@ export class Room extends DurableObject<Env> {
       const body = await req.json<any>(); return Response.json({ ok: !!this.data && !!this.members[body.uid] });
     }
     const game = url.searchParams.get('game'), code = url.searchParams.get('room');
+    const authenticatedUid = req.headers.get('X-Authenticated-Uid');
+    if (!uid(authenticatedUid)) return new Response('unauthenticated', { status: 401 });
     assert(url.pathname === '/ws' && game && GAME_TYPES.includes(game) && roomCode(code), 'invalid_room');
     assert(!this.game || this.game === game && this.code === code, 'invalid_room');
     this.game = game; this.code = code;
-    if (this.ctx.getWebSockets().length >= LIMITS.roomConnections) return new Response('Connections full', { status: 429 });
-    const pair = new WebSocketPair(); this.ctx.acceptWebSocket(pair[1]); pair[1].serializeAttachment(attachment());
+    const sockets = this.ctx.getWebSockets().filter(ws => ws.readyState === WebSocket.OPEN);
+    if (sockets.length >= LIMITS.roomConnections || sockets.filter(ws => (ws.deserializeAttachment() as Attachment).uid === authenticatedUid).length >= LIMITS.userConnections) return new Response('connections_full', { status: 429 });
+    const pair = new WebSocketPair(); this.ctx.acceptWebSocket(pair[1]);
+    const a = attachment(); a.uid = authenticatedUid; a.authenticatedAt = Date.now(); pair[1].serializeAttachment(a);
     // Also reclaim sockets that never authenticate, without waiting 24 hours.
     const alarm = await this.ctx.storage.getAlarm();
     if (alarm === null || alarm > Date.now() + 30000) await this.ctx.storage.setAlarm(Date.now() + 30000);
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
-  async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
+  webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
     const a = ws.deserializeAttachment() as Attachment;
     let m: any;
+    try { m = parse(raw, a); assert(this.queued < 64, 'rate_limited'); ws.serializeAttachment(a); }
+    catch (error) { ws.serializeAttachment(a); fail(ws, m?.id, error); return; }
+    this.queued++;
+    const pending = this.messages.then(() => { if (ws.readyState === WebSocket.OPEN) return this.handleMessage(ws, m); }).finally(() => { this.queued--; });
+    this.messages = pending.catch(() => {}); return pending;
+  }
+  private async handleMessage(ws: WebSocket, m: any) {
+    const a = ws.deserializeAttachment() as Attachment;
     try {
-      m = parse(raw, a);
       let value: any = null;
+      let patches: Patch[] = [];
       if (m.op === 'auth') {
-        assert(!a.uid && uid(m.uid) && typeof m.token === 'string' && /^[a-f0-9]{64}$/.test(m.token), 'invalid_credentials');
-        const result = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('accounts')).fetch(new Request('https://internal/verify', { method: 'POST', body: JSON.stringify({ id: m.uid, token: m.token }) }));
-        assert((await result.json<any>()).ok, 'invalid_credentials');
-        assert(this.ctx.getWebSockets().filter(s => (s.deserializeAttachment() as Attachment).uid === m.uid).length < LIMITS.userConnections, 'connections_full');
-        a.uid = m.uid; a.authenticatedAt = Date.now();
+        assert(a.uid === m.uid && !a.confirmed, 'invalid_credentials'); a.confirmed = true;
       } else {
         assert(a.uid, 'unauthenticated');
         if (m.op === 'get' || m.op === 'subscribe') {
           value = this.readPath(m.path);
           if (m.op === 'subscribe') {
-            assert(typeof m.sub === 'string' && m.sub.length <= 64 && Object.keys(a.subs).length < LIMITS.subscriptions, 'subscriptions_full');
-            a.subs[m.sub] = m.path;
+            subscription(a, m.sub, m.path);
           }
         } else if (m.op === 'unsubscribe') delete a.subs[m.sub];
         else {
           const changes = mutations(this.game, this.code, m);
-          if (changes.some(([p]) => p.length === 0) && !this.data) {
-            const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('accounts')).fetch(new Request('https://internal/reserve-room', { method: 'POST', body: JSON.stringify({ id: a.uid }) }));
-            assert((await r.json<any>()).ok, 'rooms_full');
-          }
-          this.mutate(a.uid, changes);
+          const profile = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('accounts')).fetch(new Request('https://internal/room-activity', { method: 'POST', body: JSON.stringify({ id: a.uid, room: `${this.game}/${this.code}` }) })).then(r => r.json<{ok:boolean; name:string}>());
+          assert(profile.ok, 'unauthenticated');
+          const before = this.data;
+          this.mutate(a.uid, changes, profile.name);
+          patches = diff(before, this.data);
           await this.schedule();
         }
       }
-      ws.serializeAttachment(a);
-      if (['set', 'update', 'remove'].includes(m.op)) this.broadcast();
-      send(ws, { id: m.id, value });
-    } catch (e) { ws.serializeAttachment(a); fail(ws, m?.id, e); }
+      saveAttachment(ws, a);
+      if (patches.length) this.broadcast(patches);
+      boundedSend(ws, { id: m.id, value }, ws.deserializeAttachment() as Attachment, this.out);
+    } catch (e) { saveAttachment(ws, a); fail(ws, m?.id, e); }
+    this.ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS outbound (id INTEGER PRIMARY KEY, tokens REAL, tick INTEGER)');
+    this.ctx.storage.sql.exec('INSERT OR REPLACE INTO outbound VALUES (1, ?, ?)', this.out.tokens, this.out.tick);
   }
   private readPath(path: unknown) {
     const p = parts(path);
     assert(p[0] === this.game && p[1] === this.code && (p.length === 2 || p.length === 3 && ['comments', 'messages', 'chat'].includes(p[2]) && Object.hasOwn(SCHEMAS[this.game].fields!, p[2])), 'forbidden_path');
     return read(this.data, p.slice(2));
   }
-  private mutate(id: string, changes: [string[], any][]) {
+  private mutate(id: string, changes: [string[], any][], name: string) {
     const old = this.data;
     const isHost = this.host === id;
     const phase = old?.status || old?.phase;
@@ -89,13 +104,15 @@ export class Room extends DurableObject<Env> {
     const submitted = old?.players && Object.values(old.players).length > 0 && Object.values(old.players).every((p: any) => p.submitted);
     const guessed = old?.players && Object.entries(old.players).filter(([pid]) => pid !== old.drawerId).every(([, p]: any) => p.guessedCorrectly);
     const quizAdvance = this.game === 'rooms-quiz' && (guessed || old?.timerEnd > 0 && old.timerEnd <= Date.now());
-    for (const [p, v] of changes) {
+    for (const [p, input] of changes) {
+      let v = input;
       if (!p.length) {
         assert(changes.length === 1 && plain(v), 'forbidden');
         assert(!old || phase === 'result' && (isHost || !this.ctx.getWebSockets().some(ws => { const a = ws.deserializeAttachment() as Attachment; return a.uid && a.uid !== id && members[a.uid]; })), 'room_exists');
         assert(['waiting', 'lobby'].includes(v.status || v.phase), 'invalid_initial_state');
         assert(!v.players || Object.keys(v.players).every(pid => pid === id), 'forbidden');
         assert(!v.hostId || v.hostId === id, 'forbidden');
+        assert(['comments', 'messages', 'chat'].every(field => !v[field] || Object.keys(v[field]).length === 0), 'forbidden_chat_metadata');
         candidate = structuredClone(v); nextHost = id; members = { [id]: true };
         if (candidate.players?.[id]) candidate.players[id].isHost = true;
         continue;
@@ -121,7 +138,11 @@ export class Room extends DurableObject<Env> {
           else assert(self || isHost, 'forbidden');
         } else if (['comments', 'messages', 'chat'].includes(p[0])) {
           if (p.length === 1) assert(isHost && v === null, 'forbidden');
-          else assert(p.length === 2 && !read(old, p) && plain(v), 'forbidden');
+          else {
+            assert(p.length === 2 && !read(old, p) && plain(v), 'forbidden');
+            assert(Object.keys(v).length === 1 && typeof v.text === 'string' && v.text.trim().length > 0, 'forbidden_chat_metadata');
+            v = p[0] === 'chat' ? { uid: id, name, text: v.text, ts: Date.now() } : { uid: id, sender: name, text: v.text, timestamp: Date.now(), ...(p[0] === 'messages' ? { type: 'chat' } : {}) };
+          }
         } else if (p[0] === 'playersOrder') {
           assert(p.length === 1 && Array.isArray(v) && v.every(pid => members[pid]), 'forbidden');
           if (!isHost) {
@@ -147,6 +168,20 @@ export class Room extends DurableObject<Env> {
     }
     assert(candidate && ['waiting', 'playing', 'result', 'lobby', 'word_reveal', 'discussion', 'voting', 'racing', 'question'].includes(candidate.status || candidate.phase), 'invalid_state');
     if (candidate.hostId) assert(candidate.hostId === nextHost, 'forbidden');
+    if (this.game === 'rooms-quiz' && old) {
+      const system = (text: string, type = 'system') => {
+        candidate.messages ||= {};
+        candidate.messages[`k_${crypto.randomUUID().replaceAll('-', '')}`] = { sender: 'システム', text, type, timestamp: Date.now() };
+      };
+      if (candidate.drawerId && (candidate.drawerId !== old.drawerId || candidate.timerEnd !== old.timerEnd)) system(`【第 ${candidate.currentIndex + 1} ラウンド】${candidate.players[candidate.drawerId]?.name || 'ゲスト'} さんがお絵描きする番です！`);
+      if (!old.players?.[id]?.guessedCorrectly && candidate.players?.[id]?.guessedCorrectly) {
+        const rank = Object.entries(candidate.players).filter(([pid, p]: any) => pid !== candidate.drawerId && p.guessedCorrectly).length;
+        const earned = candidate.players[id].score - (old.players?.[id]?.score || 0);
+        const drawerEarned = (candidate.players[candidate.drawerId]?.score || 0) - (old.players?.[candidate.drawerId]?.score || 0);
+        system(`🎉 ${name} さんが正解しました！ (${rank > 3 ? '4位以降' : `${rank}位`}: +${earned}pt / 描き手 +${drawerEarned}pt)`, 'correct');
+      }
+      if (candidate.currentIndex !== old.currentIndex && old.drawerId) system(old.timerEnd <= Date.now() ? `時間切れ！正解は「${old.currentWord}」でした。` : '全員正解しました！次のラウンドに進みます。');
+    }
     for (const field of ['playersOrder', 'turnOrder']) if (candidate[field]) assert(new Set(candidate[field]).size === candidate[field].length && candidate[field].every((pid: string) => members[pid]), 'invalid_players');
     for (const field of ['comments', 'messages', 'chat']) if (candidate[field]) {
       const entries = Object.entries(candidate[field]); if (entries.length > 200) candidate[field] = Object.fromEntries(entries.slice(-200));
@@ -159,10 +194,11 @@ export class Room extends DurableObject<Env> {
     this.ctx.storage.sql.exec('INSERT OR REPLACE INTO room VALUES (1, ?, ?, ?, ?, ?, ?)', this.game, this.code, json, nextHost, JSON.stringify(members), touched);
     this.data = candidate; this.host = nextHost; this.members = members; this.touched = touched;
   }
-  private broadcast() {
+  private broadcast(patches: Patch[]) {
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() as Attachment; if (!a.uid) continue;
-      for (const [sub, path] of Object.entries(a.subs)) send(ws, { sub, value: this.readPath(path) });
+      const subs = Object.entries(a.subs).filter(([, path]) => patches.some(([p]) => overlaps(parts(path).slice(2), p)));
+      if (subs.length) boundedSend(ws, { patches: patches.filter(([p]) => subs.some(([, path]) => overlaps(parts(path).slice(2), p))), subs: subs.map(([sub]) => sub) }, a, this.out);
     }
   }
   private async schedule() {

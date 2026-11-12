@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test.mjs",
     "test:lifecycle": "node scripts/check-lifecycle.mjs",
+    "test:review": "node scripts/test-review.mjs",
     "test:ui": "node scripts/check-ui.mjs",
     "icons": "node scripts/make-assets.mjs",
     "deploy": "npm run typecheck && wrangler deploy"

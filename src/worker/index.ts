@@ -26,6 +26,13 @@ export default {
     const code = url.searchParams.get('room');
     if (!game && !code) return env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts')).fetch(req);
     if (!game || !GAME_TYPES.includes(game) || !roomCode(code)) return new Response('Invalid room', { status: 400 });
-    return env.ROOMS.get(env.ROOMS.idFromName(`${game}/${code}`)).fetch(req);
+    const admission = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts')).fetch(new Request('https://internal/admit-room', {
+      method: 'POST', body: JSON.stringify({ game, code, ticket: url.searchParams.get('ticket'), ip: req.headers.get('CF-Connecting-IP') || 'local' }),
+    }));
+    if (!admission.ok) return new Response(await admission.text(), { status: admission.status });
+    const identity = await admission.json<{ uid: string }>();
+    const headers = new Headers(req.headers); headers.set('X-Authenticated-Uid', identity.uid);
+    url.searchParams.delete('ticket');
+    return env.ROOMS.get(env.ROOMS.idFromName(`${game}/${code}`)).fetch(new Request(url, { headers }));
   },
 } satisfies ExportedHandler<Env>;

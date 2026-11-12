@@ -333,7 +333,7 @@ window.sendChat = async function() {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
-    await push(ref(db, `${RPATH(roomId)}/chat`), { name: myPlayerName, text, ts: Date.now() });
+    await push(ref(db, `${RPATH(roomId)}/chat`), { text });
 };
 
 // ===== VOTING =====

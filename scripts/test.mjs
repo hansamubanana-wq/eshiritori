@@ -20,8 +20,8 @@ try {
     console.log('PASS security: owner-only users, private profiles, exact code lookup, denied root/unknown paths, bounded text/XSS');
     const resume = await open(); assert.equal((await resume.auth(alice)).uid, alice.uid);
     const fake = await open(); await assert.rejects(fake.auth({ uid: alice.uid, token: '0'.repeat(64) }), /invalid_credentials/);
-    const unauth = await open('rooms', room); await rejected(unauth, 'get', { path: `rooms/${room}` });
-    const ra = await open('rooms', room), rb = await open('rooms', room);
+    await assert.rejects(open('rooms', room), /401/);
+    const ra = await open('rooms', room, undefined, undefined, { identity: alice, account: a }), rb = await open('rooms', room, undefined, undefined, { identity: bob, account: b });
     await ra.auth(alice); await rb.auth(bob);
     const root = `rooms/${room}`;
     await ra.request('set', { path: root, value: { status: 'waiting', currentIndex: 0, startChar: 'あ', endChar: 'ん', playersOrder: [alice.uid], players: { [alice.uid]: { name: 'Alice', isHost: true } }, gameData: [], canvasData: '' } });

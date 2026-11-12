@@ -1,4 +1,4 @@
-const CACHE = 'eshiritori-v1';
+const CACHE = 'eshiritori-v2';
 const ASSETS = [
   "/",
   "/index.html",

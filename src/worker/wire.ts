@@ -3,6 +3,12 @@ export const LIMITS = {
   rate: 80, burst: 160, bytesPerSecond: 4 * 1024 * 1024,
   roomConnections: 32, accountConnections: 256, userConnections: 8,
   subscriptions: 24, players: 16, ttl: 24 * 60 * 60 * 1000,
+  accountIPConnections: 16, ipConnectionsPerMinute: 120, ipRoomAttemptsPerMinute: 90,
+  accounts: 10000, accountsPerIP: 32, accountTTL: 30 * 24 * 60 * 60 * 1000,
+  idle: 15 * 60 * 1000, connectionTTL: 24 * 60 * 60 * 1000,
+  activeRooms: 512, ticketTTL: 30000, reservationTTL: 120000,
+  outgoingRate: 2 * 1024 * 1024, outgoingBurst: 10 * 1024 * 1024,
+  roomOutgoingRate: 16 * 1024 * 1024, roomOutgoingBurst: 32 * 1024 * 1024,
 };
 export const bytes = (v: string) => new TextEncoder().encode(v).byteLength;
 export function assert(ok: unknown, code = 'forbidden'): asserts ok { if (!ok) throw new Error(code); }
@@ -26,6 +32,35 @@ export interface Attachment {
   uid?: string; authenticatedAt?: number; opened: number; subs: Record<string, string>;
   tokens: number; tick: number; traffic: number; trafficTick: number; violations: number;
   disconnect?: Record<string, any>;
+  ip?: string; lastAction?: number; confirmed?: boolean;
+  out?: Bucket;
+}
+export interface Bucket { tokens: number; tick: number }
+export function take(bucket: Bucket, size: number, rate: number, burst: number) {
+  const now = Date.now(); bucket.tokens = Math.min(burst, bucket.tokens + Math.max(0, now - bucket.tick) * rate / 1000); bucket.tick = now;
+  if (bucket.tokens < size) return false;
+  bucket.tokens -= size; return true;
+}
+export function boundedSend(ws: WebSocket, value: any, a: Attachment, room?: Bucket) {
+  const data = JSON.stringify(value), size = bytes(data);
+  a.out ||= { tokens: LIMITS.outgoingBurst, tick: Date.now() };
+  if (!take(a.out, size, LIMITS.outgoingRate, LIMITS.outgoingBurst) || room && !take(room, size, LIMITS.roomOutgoingRate, LIMITS.roomOutgoingBurst)) {
+    try { ws.close(1008, 'send_rate_limited'); } catch {} return false;
+  }
+  try { ws.send(data); } catch {} ws.serializeAttachment(a); return true;
+}
+export function saveAttachment(ws: WebSocket, a: Attachment) {
+  // New frames may arrive while an authenticated operation awaits an internal RPC.
+  const current = ws.deserializeAttachment() as Attachment;
+  for (const field of ['tokens', 'tick', 'traffic', 'trafficTick'] as const) a[field] = current[field];
+  a.lastAction = Math.max(a.lastAction || 0, current.lastAction || 0);
+  ws.serializeAttachment(a);
+}
+export function subscription(a: Attachment, sub: unknown, path: string) {
+  assert(typeof sub === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(sub) && !['__proto__', 'constructor', 'prototype'].includes(sub), 'invalid_subscription');
+  assert(!Object.entries(a.subs).some(([key, value]) => key !== sub && value === path), 'duplicate_subscription');
+  assert(Object.hasOwn(a.subs, sub) ? a.subs[sub] === path : Object.keys(a.subs).length < LIMITS.subscriptions, 'subscriptions_full');
+  a.subs[sub] = path;
 }
 export function attachment(): Attachment { return { opened: Date.now(), subs: {}, tokens: LIMITS.burst, tick: Date.now(), traffic: 0, trafficTick: Date.now(), violations: 0 }; }
 export function parse(data: string | ArrayBuffer, a: Attachment): any {

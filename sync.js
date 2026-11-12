@@ -13,16 +13,22 @@ class Connection {
         this.game = game; this.room = room; this.pending = new Map(); this.subs = new Map(); this.retry = 250;
         if (!defer) this.connected = this.open();
     }
-    open() {
+    async open() {
+        const credentials = this.game ? await ready : identity;
+        const ticket = this.game ? await accounts.send({ op: 'roomTicket', game: this.game, room: this.room }) : null;
         return new Promise((resolve, reject) => {
             const url = new URL('/ws', location.href); url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            if (this.game) { url.searchParams.set('game', this.game); url.searchParams.set('room', this.room); }
+            if (this.game) { url.searchParams.set('game', this.game); url.searchParams.set('room', this.room); url.searchParams.set('ticket', ticket); }
             const ws = this.ws = new WebSocket(url);
             let authenticated = false;
             ws.onopen = async () => {
                 try {
-                    const credentials = this.game ? await ready : identity;
-                    const auth = await this.raw({ op: 'auth', ...(credentials ? { uid: credentials.uid, token: credentials.token } : {}) });
+                    let auth;
+                    try { auth = await this.raw({ op: 'auth', ...(credentials ? { uid: credentials.uid, token: credentials.token } : {}) }); }
+                    catch (error) {
+                        if (this.game || error.message !== 'invalid_credentials') throw error;
+                        auth = await this.raw({ op: 'auth' });
+                    }
                     if (!this.game) {
                         identity = auth;
                         localStorage.setItem('eshiritori.identity', JSON.stringify(auth));
@@ -37,7 +43,19 @@ class Connection {
             ws.onmessage = event => {
                 if (event.data === 'pong') return;
                 const message = JSON.parse(event.data);
-                if (message.sub) {
+                if (message.patches) {
+                    for (const sub of message.subs) {
+                        const entry = this.subs.get(sub); if (!entry) continue;
+                        let value = structuredClone(entry.current);
+                        const base = entry.path.split('/').slice(2);
+                        for (const [path, next] of message.patches) {
+                            if (!path.slice(0, Math.min(path.length, base.length)).every((p, i) => p === base[i])) continue;
+                            if (path.length <= base.length) { value = next; for (const key of base.slice(path.length)) value = value?.[key] ?? null; }
+                            else value = apply(value, path.slice(base.length), next);
+                        }
+                        entry.deliver(value);
+                    }
+                } else if (message.sub) {
                     const entry = this.subs.get(message.sub);
                     if (entry) message.error ? entry.error(new Error(message.error)) : entry.deliver(message.value);
                 } else {
@@ -50,11 +68,16 @@ class Connection {
                 for (const p of this.pending.values()) { clearTimeout(p.timeout); p.reject(new Error('connection_closed')); }
                 this.pending.clear();
                 if (!authenticated) reject(new Error('connection_failed'));
-                if (this.hasAuthenticated && event.code !== 1008 && event.code !== 4001) {
+                if (this.hasAuthenticated && ![1008, 4001, 4002].includes(event.code)) {
                     this.connected = new Promise((res, rej) => setTimeout(() => this.open().then(res, rej), this.retry));
                     this.connected.catch(report); this.retry = Math.min(this.retry * 2, 10000);
                 }
                 if (event.code === 4001) report(new Error('room_expired'));
+                if (event.code === 4002) {
+                    this.idle = true;
+                    const resume = () => { if (!this.idle) return; this.idle = false; this.connected = this.open(); this.connected.catch(report); };
+                    window.addEventListener('pointerdown', resume, { once: true }); window.addEventListener('keydown', resume, { once: true });
+                }
             };
             ws.onerror = () => {};
         });
@@ -68,7 +91,15 @@ class Connection {
             this.ws.send(JSON.stringify({ ...payload, id }));
         });
     }
-    async send(payload) { await this.connected; return this.raw(payload); }
+    async send(payload) { if (this.idle) throw new Error('connection_expired'); await this.connected; return this.raw(payload); }
+}
+function apply(root, path, value) {
+    if (!path.length) return structuredClone(value);
+    root ??= {};
+    let node = root;
+    for (const key of path.slice(0, -1)) { if (!node[key] || typeof node[key] !== 'object') node[key] = {}; node = node[key]; }
+    if (value === null) delete node[path.at(-1)]; else node[path.at(-1)] = structuredClone(value);
+    return root;
 }
 
 function report(error) {
@@ -110,15 +141,21 @@ export function push(r, value) {
 }
 export function onValue(r, callback, error = report) {
     const c = connection(r.path), sub = `s${++sequence}`;
-    const entry = { path: r.path, deliver: value => callback(snapshot(value)), error };
+    let entry;
     // open() restores existing subscriptions. For an initial connection, wait before registering.
     let active = true;
     c.connected.then(() => {
         if (!active) return;
+        entry = [...c.subs.values()].find(e => e.path === r.path);
+        if (entry) { entry.listeners.set(callback, error); if (entry.loaded) callback(snapshot(entry.current)); return; }
+        entry = { path: r.path, sub, listeners: new Map([[callback, error]]), loaded: false,
+            deliver(value) { this.current = structuredClone(value); this.loaded = true; for (const fn of this.listeners.keys()) fn(snapshot(value)); },
+            error(error) { for (const fn of this.listeners.values()) fn(error); } };
+        entry.deliver = entry.deliver.bind(entry); entry.error = entry.error.bind(entry);
         c.subs.set(sub, entry);
-        c.raw({ op: 'subscribe', path: r.path, sub }).then(entry.deliver).catch(error);
+        c.raw({ op: 'subscribe', path: r.path, sub }).then(entry.deliver).catch(entry.error);
     }).catch(error);
-    return () => { active = false; c.subs.delete(sub); if (c.ws.readyState === WebSocket.OPEN) c.send({ op: 'unsubscribe', sub }).catch(report); };
+    return () => { active = false; if (!entry) return; entry.listeners.delete(callback); if (entry.listeners.size) return; c.subs.delete(entry.sub); if (c.ws.readyState === WebSocket.OPEN) c.send({ op: 'unsubscribe', sub: entry.sub }).catch(report); };
 }
 export const onDisconnect = r => ({ set: value => connection(r.path).send({ op: 'disconnect', path: r.path, value }) });
 export const addFriend = code => accounts.send({ op: 'addFriend', code });
@@ -127,7 +164,7 @@ setInterval(() => {
     for (const c of [accounts, ...rooms.values()]) if (c.ws?.readyState === WebSocket.OPEN) c.ws.send('ping');
 }, 25000);
 const presence = () => {
-    if (!identity) return;
+    if (!identity || accounts.idle) return;
     const game = location.pathname.split('/')[1];
     const status = { eshiritori: 'shiritori', 'drawing-quiz': 'quiz', 'drawing-telephone': 'telephone', 'word-wolf': 'wordwolf', 'typing-race': 'typing', 'quiz-battle': 'quizbattle', 'memory-cards': 'memory' }[game];
     accounts.send({ op: 'update', path: `users/${identity.uid}`, value: { status: status ? `playing_${status}` : 'online', lastActive: Date.now() } }).catch(report);
