@@ -33,7 +33,7 @@ export class Accounts extends ProductionAccounts {
     if (m.op === 'lateAlarm') await this.ctx.storage.setAlarm(Date.now() + 3600000);
     if (m.alarm) await this.alarm();
     return Response.json({ accounts: sql.exec('SELECT count(*) AS n FROM accounts').toArray()[0].n, rooms: sql.exec('SELECT count(*) AS n FROM room_registry').toArray()[0].n,
-      tickets: sql.exec('SELECT count(*) AS n FROM tickets').toArray()[0].n, nextAlarm: await this.ctx.storage.getAlarm(),
+      tickets: sql.exec('SELECT count(*) AS n FROM tickets').toArray()[0].n, nextAlarm: await this.ctx.storage.getAlarm(), now:Date.now(),
       sockets: this.ctx.getWebSockets().map(ws => ({ ...(ws.deserializeAttachment() as object), readyState: ws.readyState })) });
   }
 }
@@ -62,6 +62,14 @@ let roomCalls = 0;
 export default {
   async fetch(req: Request, env: any) {
     if (new URL(req.url).pathname === '/test-room-calls') return Response.json({ roomCalls });
-    return worker.fetch(req, { ...env, ROOMS: { idFromName: (name:string) => env.ROOMS.idFromName(name), get: (id:any) => { roomCalls++; return env.ROOMS.get(id); } } });
+    const url=new URL(req.url),game=url.searchParams.get('game'),room=url.searchParams.get('room');
+    // Historical room protocol is available ONLY in this isolated regression harness.
+    if(url.pathname==='/ws'&&game&&room){
+      const result=await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts')).fetch(new Request('https://internal/admit-room',{method:'POST',body:JSON.stringify({game,code:room,ticket:url.searchParams.get('ticket'),ip:req.headers.get('CF-Connecting-IP')||'local'})}));
+      if(!result.ok)return new Response(await result.text(),{status:result.status});
+      const a=await result.json<any>(),headers=new Headers(req.headers);headers.set('X-Authenticated-Uid',a.uid);roomCalls++;
+      return env.ROOMS.get(env.ROOMS.idFromName(`${game}/${room}`)).fetch(new Request(url,{headers}));
+    }
+    return env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts')).fetch(req);
   },
 };

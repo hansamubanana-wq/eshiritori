@@ -1,18 +1,19 @@
 import assert from 'node:assert/strict';
 import { Client, BASE, until } from './ws-client.mjs';
+import {accountFixture} from './fixtures.mjs';
 const clients = [];
 const open = async (...args) => { const c = await Client.open(...args); clients.push(c); return c; };
-const rejected = async (c, op, args, pattern = /forbidden|invalid|unauthenticated|not_member|room_exists|not_your_turn/) => assert.rejects(c.request(op, args), pattern);
-const room = `test-${Date.now()}`;
+const rejected = async (c, op, args, pattern = /forbidden|invalid|unauthenticated|not_member|not_started|not_seated|room_exists|not_your_turn/) => assert.rejects(c.request(op, args), pattern);
+const room = 'table-4';
 try {
-    const a = await open(), b = await open();
-    const alice = await a.auth(), bob = await b.auth();
+    const fa=await accountFixture('security-a'),fb=await accountFixture('security-b');
+    const fc=await accountFixture('security-stranger');const a=fa.client,b=fb.client,alice=fa.identity,bob=fb.identity;clients.push(a,b,fc.client);
     await a.request('update', { path: `users/${alice.uid}`, value: { name: 'Alice', status: 'online' } });
     await b.request('update', { path: `users/${bob.uid}`, value: { name: 'Bob', status: 'online' } });
     await rejected(a, 'set', { path: `users/${bob.uid}/name`, value: 'hijacked' });
     await rejected(a, 'set', { path: `users/${bob.uid}/friends/${alice.uid}`, value: true });
     await rejected(a, 'set', { path: 'admin/anything', value: true });
-    for (const path of ['', 'users', 'rooms', 'friend-codes', `users/${bob.uid}`, `users/${alice.uid}/hash`]) await rejected(a, 'get', { path });
+    for (const path of ['', 'users', 'rooms', 'friend-codes', `users/${fc.identity.uid}`, `users/${alice.uid}/hash`]) await rejected(a, 'get', { path });
     for (const path of ['friend-codes/FR-*', 'friend-codes/FR-ABC']) await rejected(a, 'get', { path });
     await rejected(a, 'set', { path: `users/${alice.uid}/name`, value: 'x'.repeat(41) });
     await rejected(a, 'set', { path: `users/${alice.uid}/name`, value: '<img src=x onerror=alert(1)>' });
@@ -24,9 +25,9 @@ try {
     const ra = await open('rooms', room, undefined, undefined, { identity: alice, account: a }), rb = await open('rooms', room, undefined, undefined, { identity: bob, account: b });
     await ra.auth(alice); await rb.auth(bob);
     const root = `rooms/${room}`;
-    await ra.request('set', { path: root, value: { status: 'waiting', currentIndex: 0, startChar: 'あ', endChar: 'ん', playersOrder: [alice.uid], players: { [alice.uid]: { name: 'Alice', isHost: true } }, gameData: [], canvasData: '' } });
+    for(const c of [ra,rb]){await c.request('watchTable');await c.request('leave');await c.request('watchTable');}await ra.request('sit');
     await rejected(rb, 'update', { path: root, value: { status: 'playing' } });
-    await rb.request('set', { path: `${root}/players/${bob.uid}`, value: { name: 'Bob', isHost: false } });
+    await rb.request('sit');
     await rb.request('subscribe', { path: root, sub: 'room' });
     await rejected(rb, 'update', { path: root, value: { status: 'playing' } });
     await rejected(rb, 'set', { path: `${root}/players/${alice.uid}`, value: { name: 'Bad' } });
@@ -34,6 +35,7 @@ try {
     await rejected(ra, 'set', { path: `${root}/players`, value: { unexpected: { name: 'Bad' } } });
     await rejected(ra, 'update', { path: '', value: { [`${root}/status`]: 'playing', 'rooms/another/status': 'playing' } });
     assert.equal((await ra.request('get', { path: root })).status, 'waiting');
+    for(const c of [ra,rb])await c.request('command',{roundId:c.state.meta.roundId,operationId:crypto.randomUUID(),action:'ready',payload:{}});
     await ra.request('update', { path: root, value: { status: 'playing' } });
     await rejected(rb, 'update', { path: root, value: { canvasData: 'data:image/png;base64,AAAA' } });
     await ra.request('update', { path: root, value: { canvasData: 'data:image/png;base64,AAAA' } });
@@ -49,9 +51,9 @@ try {
     assert.equal(publicProfile.name, 'Bob'); assert.equal(publicProfile.invites, undefined); assert.equal(publicProfile.friendCode, undefined);
     await rejected(a, 'set', { path: `users/${bob.uid}/invites/k_${'a'.repeat(32)}`, value: {} });
     console.log('PASS friends: reciprocal add, private friend summaries, server-authorized invitation delivered');
-    const large = await open(); await large.auth();
+    const large = await open(); await large.auth(alice);
     await assert.rejects(large.request('set', { path: 'bad', value: 'x'.repeat(768 * 1024) }), /message_too_large/);
-    const flood = await open(); const flooding = await flood.auth();
+    const flood = await open(); const flooding = await flood.auth(bob);
     const results = await Promise.allSettled(Array.from({ length: 200 }, () => flood.request('get', { path: `users/${flooding.uid}/name` })));
     assert(results.some(r => r.status === 'rejected' && /rate_limited/.test(r.reason.message)));
     console.log('PASS limits: oversized WebSocket message and connection flood rejected');
@@ -59,4 +61,5 @@ try {
     const response = await fetch(new URL('/ws', BASE), { headers: { Origin: new URL(BASE).origin } }); assert.equal(response.status, 426);
     for (const path of ['/src/worker/index.ts', '/package.json', '/scripts/test.mjs', '/.git/config', '/wrangler.jsonc', '/README.md']) assert.equal((await fetch(new URL(path, BASE))).status, 404, path);
     console.log('PASS HTTP: Origin enforcement, no HTTP database endpoint, source/config excluded from assets');
-} finally { clients.forEach(c => c.close()); }
+} finally { for(const c of clients){if(c.state?.meta)try{await c.request('leave');}catch{}c.close();} }
+await import('./test-tables.mjs');

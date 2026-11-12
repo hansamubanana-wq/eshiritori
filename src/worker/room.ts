@@ -5,15 +5,15 @@ import { attachment, assert, bytes, fail, LIMITS, parse, parts, plain, read, bou
 import { diff, overlaps, type Patch } from './patch';
 
 export class Room extends DurableObject<Env> {
-  private messages: Promise<unknown> = Promise.resolve();
+  protected messages: Promise<unknown> = Promise.resolve();
   private queued = 0;
-  private game = '';
-  private code = '';
-  private data: any = null;
-  private host = '';
-  private members: Record<string, boolean> = {};
-  private touched = 0;
-  private out: Bucket = { tokens: LIMITS.roomOutgoingBurst, tick: Date.now() };
+  protected game = '';
+  protected code = '';
+  protected data: any = null;
+  protected host = '';
+  protected members: Record<string, boolean> = {};
+  protected touched = 0;
+  protected out: Bucket = { tokens: LIMITS.roomOutgoingBurst, tick: Date.now() };
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS room (id INTEGER PRIMARY KEY, game TEXT, code TEXT, state TEXT, host TEXT, members TEXT, touched INTEGER)');
@@ -55,7 +55,7 @@ export class Room extends DurableObject<Env> {
     const pending = this.messages.then(() => { if (ws.readyState === WebSocket.OPEN) return this.handleMessage(ws, m); }).finally(() => { this.queued--; });
     this.messages = pending.catch(() => {}); return pending;
   }
-  private async handleMessage(ws: WebSocket, m: any) {
+  protected async handleMessage(ws: WebSocket, m: any) {
     const a = ws.deserializeAttachment() as Attachment;
     try {
       let value: any = null;
@@ -87,12 +87,12 @@ export class Room extends DurableObject<Env> {
     this.ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS outbound (id INTEGER PRIMARY KEY, tokens REAL, tick INTEGER)');
     this.ctx.storage.sql.exec('INSERT OR REPLACE INTO outbound VALUES (1, ?, ?)', this.out.tokens, this.out.tick);
   }
-  private readPath(path: unknown) {
+  protected readPath(path: unknown) {
     const p = parts(path);
     assert(p[0] === this.game && p[1] === this.code && (p.length === 2 || p.length === 3 && ['comments', 'messages', 'chat'].includes(p[2]) && Object.hasOwn(SCHEMAS[this.game].fields!, p[2])), 'forbidden_path');
     return read(this.data, p.slice(2));
   }
-  private mutate(id: string, changes: [string[], any][], name: string) {
+  protected mutate(id: string, changes: [string[], any][], name: string) {
     const old = this.data;
     const isHost = this.host === id;
     const phase = old?.status || old?.phase;
@@ -188,13 +188,14 @@ export class Room extends DurableObject<Env> {
     }
     validate(SCHEMAS[this.game], candidate);
     const json = JSON.stringify(candidate);
-    assert(bytes(json) + bytes(JSON.stringify(members)) + bytes(this.game + this.code + nextHost) <= LIMITS.room, 'room_too_large');
+    assert(bytes(json) + bytes(JSON.stringify(members)) + bytes(this.game + this.code + nextHost) <= this.stateBudget(), 'room_too_large');
     const touched = Date.now();
     this.ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS room (id INTEGER PRIMARY KEY, game TEXT, code TEXT, state TEXT, host TEXT, members TEXT, touched INTEGER)');
     this.ctx.storage.sql.exec('INSERT OR REPLACE INTO room VALUES (1, ?, ?, ?, ?, ?, ?)', this.game, this.code, json, nextHost, JSON.stringify(members), touched);
     this.data = candidate; this.host = nextHost; this.members = members; this.touched = touched;
   }
-  private broadcast(patches: Patch[]) {
+  protected stateBudget(){return LIMITS.room;}
+  protected broadcast(patches: Patch[]) {
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() as Attachment; if (!a.uid) continue;
       const subs = Object.entries(a.subs).filter(([, path]) => patches.some(([p]) => overlaps(parts(path).slice(2), p)));

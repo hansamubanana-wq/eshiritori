@@ -4,6 +4,7 @@
 /src/**
 /scripts/**
 /test-results/**
+/*.d.ts
 /*.md
 /*.json
 /*.jsonc

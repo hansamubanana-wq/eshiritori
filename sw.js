@@ -1,10 +1,15 @@
-const CACHE = 'eshiritori-v2';
+const CACHE = 'eshiritori-v3';
 const ASSETS = [
   "/",
   "/index.html",
   "/style.css",
   "/portal.js",
   "/sync.js",
+  "/catalog.js",
+  "/lobby.css",
+  "/table.css",
+  "/table-client.js",
+  "/secure-game-client.js",
   "/pwa.js",
   "/pwa.css",
   "/corner-mode.js",

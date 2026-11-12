@@ -1,10 +1,15 @@
 export { Room } from './room';
 export { Accounts } from './accounts';
+export { Lobby } from './lobby';
+export { Table } from './table';
 import { GAME_TYPES, roomCode } from './schema';
+import { fixedTable } from '../../catalog.js';
 
 export interface Env {
   ROOMS: DurableObjectNamespace;
   ACCOUNTS: DurableObjectNamespace;
+  LOBBY: DurableObjectNamespace;
+  TABLES: DurableObjectNamespace;
   ASSETS: Fetcher;
   PUBLIC_ORIGIN: string;
 }
@@ -22,10 +27,11 @@ export default {
     } catch {}
     if (!origin || (!local && origin !== env.PUBLIC_ORIGIN)) return new Response('Forbidden origin', { status: 403 });
     if (req.method !== 'GET' || req.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('WebSocket required', { status: 426 });
-    const game = url.searchParams.get('game');
-    const code = url.searchParams.get('room');
+    const isLobby = url.searchParams.get('lobby') === '1';
+    const game = isLobby ? 'lobby' : url.searchParams.get('game');
+    const code = isLobby ? 'main' : url.searchParams.get('room');
     if (!game && !code) return env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts')).fetch(req);
-    if (!game || !GAME_TYPES.includes(game) || !roomCode(code)) return new Response('Invalid room', { status: 400 });
+    if (!isLobby && (!game || !fixedTable(game, code))) return new Response('Invalid table', { status: 400 });
     const admission = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts')).fetch(new Request('https://internal/admit-room', {
       method: 'POST', body: JSON.stringify({ game, code, ticket: url.searchParams.get('ticket'), ip: req.headers.get('CF-Connecting-IP') || 'local' }),
     }));
@@ -33,6 +39,6 @@ export default {
     const identity = await admission.json<{ uid: string }>();
     const headers = new Headers(req.headers); headers.set('X-Authenticated-Uid', identity.uid);
     url.searchParams.delete('ticket');
-    return env.ROOMS.get(env.ROOMS.idFromName(`${game}/${code}`)).fetch(new Request(url, { headers }));
+    return isLobby ? env.LOBBY.get(env.LOBBY.idFromName('lobby')).fetch(new Request(url, { headers })) : env.TABLES.get(env.TABLES.idFromName(`${game}/${code}`)).fetch(new Request(url, { headers }));
   },
 } satisfies ExportedHandler<Env>;

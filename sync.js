@@ -11,14 +11,15 @@ let sequence = 0;
 class Connection {
     constructor(game, room, defer = false) {
         this.game = game; this.room = room; this.pending = new Map(); this.subs = new Map(); this.retry = 250;
+        this.listeners = new Set(); this.state = null;
         if (!defer) this.connected = this.open();
     }
     async open() {
         const credentials = this.game ? await ready : identity;
-        const ticket = this.game ? await accounts.send({ op: 'roomTicket', game: this.game, room: this.room }) : null;
+        const ticket = this.game ? await accounts.send(this.game==='lobby'?{op:'lobbyTicket'}:{ op: 'roomTicket', game: this.game, room: this.room }) : null;
         return new Promise((resolve, reject) => {
             const url = new URL('/ws', location.href); url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            if (this.game) { url.searchParams.set('game', this.game); url.searchParams.set('room', this.room); url.searchParams.set('ticket', ticket); }
+            if (this.game) { if(this.game==='lobby')url.searchParams.set('lobby','1');else{url.searchParams.set('game', this.game);url.searchParams.set('room', this.room);}url.searchParams.set('ticket', ticket); }
             const ws = this.ws = new WebSocket(url);
             let authenticated = false;
             ws.onopen = async () => {
@@ -36,6 +37,7 @@ class Connection {
                         localStorage.setItem('friendCode', auth.friendCode);
                     }
                     authenticated = true; this.hasAuthenticated = true; this.retry = 250;
+                    if(this.game){const state=await this.raw({op:this.game==='lobby'?'watchLobby':'watchTable'});this.deliverState(state);}
                     for (const [sub, entry] of this.subs) this.raw({ op: 'subscribe', path: entry.path, sub }).then(entry.deliver).catch(entry.error);
                     resolve(this.game ? credentials : auth);
                 } catch (error) { reject(error); ws.close(1008, 'authentication_failed'); }
@@ -43,7 +45,9 @@ class Connection {
             ws.onmessage = event => {
                 if (event.data === 'pong') return;
                 const message = JSON.parse(event.data);
-                if (message.patches) {
+                if(message.tableState||message.lobbyState)this.deliverState(message.tableState||message.lobbyState);
+                else if(message.tablePatch||message.lobbyPatch){let state=structuredClone(this.state);for(const [path,value]of(message.tablePatch||message.lobbyPatch))state=apply(state,path,value);this.deliverState(state);}
+                else if (message.patches) {
                     for (const sub of message.subs) {
                         const entry = this.subs.get(sub); if (!entry) continue;
                         let value = structuredClone(entry.current);
@@ -92,13 +96,15 @@ class Connection {
         });
     }
     async send(payload) { if (this.idle) throw new Error('connection_expired'); await this.connected; return this.raw(payload); }
+    deliverState(value){this.state=structuredClone(value);for(const listener of this.listeners)listener(structuredClone(value));}
+    onState(fn){this.listeners.add(fn);if(this.state)fn(structuredClone(this.state));return()=>this.listeners.delete(fn);}
 }
 function apply(root, path, value) {
     if (!path.length) return structuredClone(value);
     root ??= {};
     let node = root;
     for (const key of path.slice(0, -1)) { if (!node[key] || typeof node[key] !== 'object') node[key] = {}; node = node[key]; }
-    if (value === null) delete node[path.at(-1)]; else node[path.at(-1)] = structuredClone(value);
+    if (value === null && !Array.isArray(node)) delete node[path.at(-1)]; else node[path.at(-1)] = structuredClone(value);
     return root;
 }
 
@@ -114,13 +120,15 @@ const initialize = () => {
 export const ready = navigator.locks ? navigator.locks.request('eshiritori-identity', initialize) : initialize();
 accounts.connected = ready;
 const rooms = new Map();
+let lobby;
+export function connectLobby(){return lobby ||= new Connection('lobby','main');}
+export function connectTable(game,code){const key=`${game}/${code}`;if(!rooms.has(key))rooms.set(key,new Connection(game,code));return rooms.get(key);}
 function connection(path, value) {
     const target = path || Object.keys(value || {})[0] || '';
     const [game, room] = target.split('/');
     if (roomTypes.has(game) && room) {
         const key = `${game}/${room}`;
-        if (!rooms.has(key)) rooms.set(key, new Connection(game, room));
-        return rooms.get(key);
+        return connectTable(game,room);
     }
     return accounts;
 }
@@ -161,7 +169,7 @@ export const onDisconnect = r => ({ set: value => connection(r.path).send({ op: 
 export const addFriend = code => accounts.send({ op: 'addFriend', code });
 export const sendInvite = (to, value) => accounts.send({ op: 'invite', to, gameType: value.gameType, roomId: value.roomId });
 setInterval(() => {
-    for (const c of [accounts, ...rooms.values()]) if (c.ws?.readyState === WebSocket.OPEN) c.ws.send('ping');
+    for (const c of [accounts, ...(lobby?[lobby]:[]), ...rooms.values()]) if (c.ws?.readyState === WebSocket.OPEN) c.ws.send('ping');
 }, 25000);
 const presence = () => {
     if (!identity || accounts.idle) return;

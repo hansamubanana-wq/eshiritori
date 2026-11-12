@@ -1,33 +1,20 @@
+import {tableReady,bindLegacy,onTableState} from '../table-client.js';
 import { getDatabase, ref, set, onValue, update, get, push, ready, onReady, sendInvite, addFriend } from "../sync.js";
 
 const account = await ready;
+const table = await tableReady;
 const db = getDatabase();
 
-let roomId = "";
-let myPlayerName = "";
-let myPlayerId = "";
+let roomId = table.code;
+let myPlayerName = table.name;
+let myPlayerId = account.uid;
 let myUserId = localStorage.getItem('userId') || "";
 let isHost = false;
 let roomState = null;
 let sendCanvasTimeout = null;
 
 // アカウント名自動入力とURLクエリによる自動入室
-onReady(() => {
-    const savedName = localStorage.getItem('username');
-    if (savedName) {
-        document.getElementById('user-name').value = savedName;
-    }
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get('room');
-    if (roomParam) {
-        document.getElementById('room-id').value = roomParam;
-        if (savedName) {
-            setTimeout(() => {
-                window.connectLobby();
-            }, 300);
-        }
-    }
-});
+onReady(() => { onTableState(state => { isHost = state.meta.hostId === account.uid; }); bindLegacy(listenToRoom, () => window.hostStartGame()); });
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -39,85 +26,6 @@ let isEraserMode = false;
 function changeScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
-}
-
-window.connectLobby = function() {
-    myPlayerName = document.getElementById('user-name').value.trim();
-    roomId = document.getElementById('room-id').value.trim();
-    if(!myPlayerName || !roomId) {
-        alert("なまえ と パスワード をいれてね！");
-        return;
-    }
-    myPlayerId = account.uid;
-    
-    const roomRef = ref(db, 'rooms/' + roomId);
-    get(roomRef).then((snapshot) => {
-        if (snapshot.exists()) {
-            let data = snapshot.val();
-            if (data.status === "playing") { alert("このゲームはすでに進行中です。"); return; }
-            if (data.status === "result") {
-                isHost = true;
-                createRoom(); 
-            } else {
-                isHost = false;
-                joinRoom();
-            }
-        } else {
-            isHost = true;
-            createRoom();
-        }
-    });
-}
-
-function createRoom() {
-    const roomRef = ref(db, 'rooms/' + roomId);
-    const startChar = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ"[Math.floor(Math.random() * 42)];
-    let endChar = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ"[Math.floor(Math.random() * 42)];
-    while(startChar === endChar) {
-        endChar = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろ"[Math.floor(Math.random() * 42)];
-    }
-
-    const initialData = {
-        status: "waiting",
-        currentIndex: 0,
-        startChar: startChar,
-        endChar: endChar,
-        playersOrder: [myPlayerId],
-        players: {
-            [myPlayerId]: { name: myPlayerName, isHost: true }
-        },
-        gameData: [],
-        canvasData: ""
-    };
-
-    set(roomRef, initialData).then(() => {
-        listenToRoom();
-        changeScreen('screen-lobby');
-        if (myUserId) {
-            update(ref(db, `users/${myUserId}`), { status: "playing_shiritori" });
-        }
-    });
-}
-
-function joinRoom() {
-    const playersRef = ref(db, `rooms/${roomId}/players/${myPlayerId}`);
-    set(playersRef, { name: myPlayerName, isHost: false }).then(() => {
-        const roomRef = ref(db, 'rooms/' + roomId);
-        get(roomRef).then((snapshot) => {
-            let data = snapshot.val();
-            let order = data.playersOrder || [];
-            if (!order.includes(myPlayerId)) {
-                order.push(myPlayerId);
-            }
-            update(ref(db, 'rooms/' + roomId), { playersOrder: order });
-        });
-        
-        listenToRoom();
-        changeScreen('screen-lobby');
-        if (myUserId) {
-            update(ref(db, `users/${myUserId}`), { status: "playing_shiritori" });
-        }
-    });
 }
 
 function listenToRoom() {

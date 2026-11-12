@@ -6,7 +6,6 @@
     <title>タイピングレース</title>
     <link rel="stylesheet" href="style.css">
     <script type="module" src="app.js"></script>
-    <script src="../corner-mode.js" defer></script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="タイピングレース">
@@ -26,47 +25,23 @@
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
     <link rel="stylesheet" href="/pwa.css">
     <script type="module" src="/pwa.js"></script>
+    <link rel="stylesheet" href="/table.css">
 </head>
 <body>
 <div class="container">
 
     <!-- セットアップ画面 -->
-    <div id="screen-setup" class="screen active">
-        <h1>⌨️ タイピングレース</h1>
-        <p>全員同じ文章を一斉にタイピング！一番早くゴールを目指せ！</p>
-        <div style="margin-bottom:12px;">
-            あなたの名前：<br>
-            <input type="text" id="user-name" placeholder="プレイヤー名" style="width:250px;" maxlength="40">
-        </div>
-        <div style="margin-bottom:12px;">
-            部屋のパスワード：<br>
-            <input type="text" id="room-id" placeholder="例: race123" style="width:250px;" maxlength="64" pattern="[A-Za-z0-9_-]+">
-        </div>
-        <button onclick="connectLobby()">部屋に入る / 作る</button>
-        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
-        <div class="instructions-card">
-            <h3>📖 遊び方ルール</h3>
-            <ul>
-                <li><strong>スタート：</strong>ホストが「スタート」を押すと3秒カウントダウン後に開始！</li>
-                <li><strong>タイピング：</strong>表示された文章を入力エリアに入力します。<strong>ひらがな入力</strong>で！</li>
-                <li><strong>進捗：</strong>全員の進捗がリアルタイムで棒グラフに表示されます。</li>
-                <li><strong>ゴール：</strong>全文入力完了！タイムが記録されます。全員ゴールで結果発表。</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- ロビー画面 -->
-    <div id="screen-lobby" class="screen">
+    <div id="screen-lobby" class="screen active">
         <h2 id="lobby-room-title">部屋: --</h2>
         <button id="lobby-invite-btn" onclick="openLobbyInviteModal()" style="display:none;background-color:#3498db;border-color:#2980b9;padding:8px 16px;font-size:13px;margin-bottom:12px;">👥 フレンドを招待</button>
-        <p>全員集まったらホストがスタートを押してください！</p>
+
         <div class="lobby-list">
             <div style="font-weight:bold;border-bottom:2px dashed #9c826b;padding-bottom:5px;margin-bottom:10px;">参加中メンバー：</div>
             <div id="lobby-players-list"></div>
         </div>
-        <button id="start-game-btn" onclick="hostStartGame()" style="display:none;background-color:#27ae60;border-color:#1e8449;margin-top:15px;">レーススタート！🏁</button>
+        <button id="start-game-btn" hidden></button>
         <p id="wait-host-msg" style="font-size:14px;color:#7f8c8d;margin-top:10px;">※ホストがスタートボタンを押すと始まります。</p>
-        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;font-size:13px;margin-top:5px;">ゲーム選択に戻る</button>
+
     </div>
 
     <!-- レース画面 -->
@@ -94,8 +69,8 @@
         <h2>🏁 レース結果！</h2>
         <div id="result-leaderboard" class="result-leaderboard"></div>
         <div style="margin-top:25px;text-align:center;">
-            <button id="restart-btn" onclick="restartGame()" style="display:none;background-color:#27ae60;border-color:#1e8449;font-size:17px;">もう一度遊ぶ（ホストのみ）</button>
-            <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+
+
         </div>
     </div>
 
@@ -117,5 +92,6 @@
     </div>
 </div>
 
+<button id="restart-btn" hidden style="display:none!important"></button>
 </body>
 </html>

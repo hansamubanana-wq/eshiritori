@@ -1,243 +1,45 @@
-import { getDatabase, ref, onValue, update, get, remove, ready, onReady, addFriend } from "./sync.js";
-
-const account = await ready;
-const db = getDatabase();
-
-let myUserId = account.uid;
-let myUserName = (await get(ref(db, `users/${myUserId}`))).val()?.name || "";
-let myFriendCode = account.friendCode;
-let activeListeners = {}; // フレンド状態監視用のリスナー管理
-
-onReady(() => {
-    initAccount();
-
-    document.getElementById('register-profile-btn').addEventListener('click', registerProfile);
-    document.getElementById('edit-profile-btn').addEventListener('click', editProfileName);
-    document.getElementById('add-friend-btn').addEventListener('click', addFriendByCode);
-    document.getElementById('display-friendcode-badge').addEventListener('click', copyFriendCode);
+import {ready,db,ref,get,update,onValue,remove,addFriend,connectLobby,onReady} from './sync.js';
+import {GAMES} from './catalog.js';
+const account=await ready;
+const $=id=>document.getElementById(id);
+const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let selected=GAMES.find(g=>g.id===localStorage.getItem('eshiritori.game'))||GAMES[0],state;
+const lobby=connectLobby();
+function render(){
+  $('game-tabs').innerHTML=GAMES.map(g=>`<button role="tab" data-game="${g.id}" aria-selected="${g.id===selected.id}">${g.name}</button>`).join('');
+  $('game-description').textContent=selected.description;
+  if(!state)return;
+  $('table-grid').innerHTML=state.tables.filter(t=>t.game===selected.id).map(t=>{
+    const count=t.seats.filter(Boolean).length,playing=t.phase==='playing',full=count>=t.capacity;
+    return `<article class="table-card" data-table="${t.code}"><div class="table-card-head"><strong class="table-number">卓${t.number}</strong><span class="table-count">${count}/${t.capacity}</span><span class="table-status ${playing?'playing':full?'full':''}">${playing?'対戦中':full?'満席':'待機中'}</span></div><div class="table-seats">${t.seats.map(s=>`<div class="seat"><span class="seat-circle ${s?'occupied':''}">${s?escape([...s.name][0]):''}</span><span class="seat-name">${s?escape(s.name):'　'}</span></div>`).join('')}</div><div class="table-actions">${!playing&&!full?'<button data-mode="sit">座る</button>':''}${playing?'<button data-mode="watch">観戦</button>':''}</div></article>`;
+  }).join('');
+  $('lobby-messages').innerHTML=state.chat.map(m=>`<div class="lobby-message"><strong>${escape(m.name)}：</strong>${escape(m.text)}</div>`).join('');
+  $('lobby-messages').scrollTop=$('lobby-messages').scrollHeight;
+}
+onReady(async()=>{
+  const profile=(await get(ref(db,`users/${account.uid}`))).val();
+  if(!profile.name)$('profile-dialog').showModal();else localStorage.setItem('username',profile.name);
+  $('display-username').textContent=profile.name||'';$('display-friendcode').textContent=account.friendCode;
+  $('profile-form').onsubmit=async e=>{e.preventDefault();const name=$('profile-name-input').value.trim();await update(ref(db,`users/${account.uid}`),{name});localStorage.setItem('username',name);$('display-username').textContent=name;$('profile-dialog').close();};
+  $('game-tabs').onclick=e=>{const button=e.target.closest('[data-game]');if(!button)return;selected=GAMES.find(g=>g.id===button.dataset.game);localStorage.setItem('eshiritori.game',selected.id);render();};
+  $('table-grid').onclick=e=>{const button=e.target.closest('[data-mode]');if(!button)return;if(!localStorage.getItem('username')){$('profile-dialog').showModal();return;}const card=button.closest('[data-table]');location.href=`/${selected.path}/?table=${card.dataset.table}&mode=${button.dataset.mode}`;};
+  $('lobby-chat-form').onsubmit=async e=>{e.preventDefault();const text=$('lobby-chat-input').value.trim();if(!text)return;await lobby.send({op:'lobbyChat',text});$('lobby-chat-input').value='';};
+  $('friends-open').onclick=()=>$('friends-dialog').showModal();$('friends-close').onclick=()=>$('friends-dialog').close();
+  $('display-friendcode-badge').onclick=()=>navigator.clipboard.writeText(account.friendCode);
+  $('edit-profile-btn').onclick=()=>{$('profile-name-input').value=localStorage.getItem('username')||'';$('friends-dialog').close();$('profile-dialog').showModal();};
+  $('friend-form').onsubmit=async e=>{e.preventDefault();await addFriend($('friend-code-input').value.trim().toUpperCase());$('friend-code-input').value='';};
+  onValue(ref(db,`users/${account.uid}/friends`),async snap=>{
+    const ids=Object.keys(snap.val()||{});const friends=await Promise.all(ids.map(async id=>({id,...(await get(ref(db,`users/${id}`))).val()})));
+    $('friends-list').innerHTML=friends.map(f=>`<div class="friend-item">${escape(f.name)}</div>`).join('');
+  });
+  onValue(ref(db,`users/${account.uid}/invites`),snap=>{
+    const entries=Object.entries(snap.val()||{});if(!entries.length)return;const [key,invite]=entries.at(-1);
+    if(Date.now()-invite.timestamp>60000){remove(ref(db,`users/${account.uid}/invites/${key}`));return;}
+    const game=GAMES.find(g=>g.key===invite.gameType);if(!game)return;const table=invite.tableId||invite.roomId;
+    $('invite-modal-text').textContent=`${invite.fromName} さんから ${game.name} 卓${table.split('-').at(-1)} への招待`;
+    if(!$('invite-modal').open)$('invite-modal').showModal();
+    const dismiss=async()=>{await remove(ref(db,`users/${account.uid}/invites/${key}`));$('invite-modal').close();};
+    $('invite-decline-btn').onclick=dismiss;$('invite-accept-btn').onclick=async()=>{await dismiss();location.href=`/${game.path}/?table=${table}&mode=sit`;};
+  });
+  lobby.onState(next=>{state=next;render();});render();
 });
-
-// アカウントの初期化
-function initAccount() {
-    if (myUserId && myUserName && myFriendCode) {
-        showProfileDisplay();
-        listenToFriends();
-        listenToInvites();
-    } else {
-        showProfileSetup();
-    }
-}
-
-function showProfileSetup() {
-    document.getElementById('profile-setup-view').style.display = 'block';
-    document.getElementById('profile-display-view').style.display = 'none';
-    document.getElementById('friends-area').style.display = 'none';
-}
-
-function showProfileDisplay() {
-    document.getElementById('profile-setup-view').style.display = 'none';
-    document.getElementById('profile-display-view').style.display = 'block';
-    document.getElementById('friends-area').style.display = 'block';
-    document.getElementById('display-username').innerText = myUserName;
-    document.getElementById('display-friendcode').innerText = myFriendCode;
-}
-
-// プロフィール登録
-async function registerProfile() {
-    const name = document.getElementById('profile-name-input').value.trim();
-    if (!name) { alert("名前を入力してください！"); return; }
-    await update(ref(db, `users/${myUserId}`), { name, status: "online", lastActive: Date.now() });
-    myUserName = name;
-    localStorage.setItem('username', name);
-    initAccount();
-}
-
-// 名前変更
-function editProfileName() {
-    const newName = prompt("新しい名前を入力してください：", myUserName);
-    if (newName === null) return;
-    const trimmed = newName.trim();
-    if (!trimmed) {
-        alert("名前を入力してください！");
-        return;
-    }
-
-    myUserName = trimmed;
-    localStorage.setItem('username', myUserName);
-    document.getElementById('display-username').innerText = myUserName;
-
-    // サーバー更新
-    update(ref(db, `users/${myUserId}`), { name: myUserName });
-}
-
-// フレンドコードのコピー
-function copyFriendCode() {
-    navigator.clipboard.writeText(myFriendCode).then(() => {
-        alert("フレンドコードをクリップボードにコピーしました！");
-    }).catch(err => {
-        console.error("コピー失敗: ", err);
-    });
-}
-
-// 在席通知と無操作後の再接続は sync.js で管理する。
-
-
-// フレンド追加（片方が入力したら両方登録される相互自動方式に変更）
-async function addFriendByCode() {
-    const input = document.getElementById('friend-code-input');
-    const code = input.value.trim().toUpperCase();
-    if (!code) { alert("フレンドコードを入力してください！"); return; }
-    try {
-        await addFriend(code);
-        input.value = "";
-        alert("フレンドを追加しました！お互いのリストに同期されたよ。");
-    } catch { alert("フレンドコードを確認してください。"); }
-}
-
-// フレンドのリアルタイム監視
-function listenToFriends() {
-    const friendsRef = ref(db, `users/${myUserId}/friends`);
-    onValue(friendsRef, (snapshot) => {
-        const friends = snapshot.val();
-        const listEl = document.getElementById('friends-list');
-        listEl.querySelectorAll('[data-empty]').forEach(el => el.remove());
-
-        if (!friends) {
-            listEl.innerHTML = '<div data-empty style="color: #7f6e64; font-size: 12px; text-align: center; padding: 20px 0;">フレンドがまだいません</div>';
-            // 古いリスナーを解放
-            Object.keys(activeListeners).forEach(id => {
-                activeListeners[id]();
-            });
-            activeListeners = {};
-            return;
-        }
-
-        const friendIds = Object.keys(friends);
-        
-        friendIds.forEach(friendId => {
-            if (!activeListeners[friendId]) {
-                const friendProfileRef = ref(db, `users/${friendId}`);
-                // 各フレンドのプロフィールのリアルタイム監視
-                const unsub = onValue(friendProfileRef, (pSnapshot) => {
-                    const fProfile = pSnapshot.val();
-                    renderFriendItem(friendId, fProfile);
-                });
-                activeListeners[friendId] = unsub;
-            }
-        });
-
-        // 削除されたフレンドのリスナーを解除
-        Object.keys(activeListeners).forEach(id => {
-            if (!friends[id]) {
-                activeListeners[id]();
-                delete activeListeners[id];
-                document.getElementById(`friend-row-${id}`)?.remove();
-            }
-        });
-    });
-}
-
-// フレンド一覧表示レンダリング
-function renderFriendItem(friendId, profile) {
-    if (!profile) return;
-    
-    // すでに表示されていれば更新、なければ新規作成
-    let rowEl = document.getElementById(`friend-row-${friendId}`);
-    if (!rowEl) {
-        rowEl = document.createElement('div');
-        rowEl.id = `friend-row-${friendId}`;
-        rowEl.className = "friend-item";
-        document.getElementById('friends-list').appendChild(rowEl);
-    }
-
-    const isOnline = profile.status !== "offline" && (Date.now() - profile.lastActive < 45000);
-    const isPlaying = isOnline && profile.status.startsWith("playing_");
-    
-    let statusClass = "offline";
-    let statusText = "🔴 オフライン";
-    if (isPlaying) {
-        statusClass = "playing";
-        const gameNames = {
-            playing_shiritori: "しりとり中",
-            playing_quiz: "クイズ中",
-            playing_telephone: "伝言ゲーム中",
-            playing_wordwolf: "ワードウルフ中",
-            playing_typing: "タイピング中",
-            playing_quizbattle: "クイズバトル中",
-            playing_memory: "神経衰弱中",
-        };
-        const gameName = gameNames[profile.status] || "プレイ中";
-        statusText = `🎮 ${gameName}`;
-    } else if (isOnline) {
-        statusClass = "online";
-        statusText = "🟢 オンライン";
-    }
-
-    rowEl.innerHTML = `
-        <span style="color: #4a3b32; font-weight: bold;">${profile.name}</span>
-        <div class="friend-status">
-            <span class="status-dot ${statusClass}"></span>
-            <span style="font-size: 11px; color: #7f6e64;">${statusText}</span>
-        </div>
-    `;
-}
-
-// リアルタイムゲーム招待の受信監視
-function listenToInvites() {
-    const invitesRef = ref(db, `users/${myUserId}/invites`);
-    onValue(invitesRef, (snapshot) => {
-        const invites = snapshot.val();
-        if (!invites) return;
-
-        // 最新の招待を取得
-        const inviteKeys = Object.keys(invites);
-        if (inviteKeys.length === 0) return;
-        
-        const latestKey = inviteKeys[inviteKeys.length - 1];
-        const invite = invites[latestKey];
-
-        // 1分以上前の古い招待は無視
-        if (Date.now() - invite.timestamp > 60000) {
-            remove(ref(db, `users/${myUserId}/invites/${latestKey}`));
-            return;
-        }
-
-        // モーダルを表示
-        const modal = document.getElementById('invite-modal');
-        const modalText = document.getElementById('invite-modal-text');
-        
-        let gameTitle = "ゲーム";
-        let redirectUrl = "";
-        const gameMap = {
-            eshiritori:  { title: "リアルタイム絵しりとり",   url: "eshiritori/index.html" },
-            quiz:        { title: "スピードお絵描きクイズ",   url: "drawing-quiz/index.html" },
-            telephone:   { title: "お絵描き伝言ゲーム",       url: "drawing-telephone/index.html" },
-            wordwolf:    { title: "ワードウルフ",             url: "word-wolf/index.html" },
-            typing:      { title: "タイピングレース",         url: "typing-race/index.html" },
-            quizbattle:  { title: "クイズバトル",             url: "quiz-battle/index.html" },
-            memory:      { title: "神経衰弱",                 url: "memory-cards/index.html" },
-        };
-        if (gameMap[invite.gameType]) {
-            gameTitle = gameMap[invite.gameType].title;
-            redirectUrl = gameMap[invite.gameType].url;
-        }
-
-        modalText.innerText = `${invite.fromName} さんから\n『${gameTitle}』\nに招待されました！\n(部屋パスワード: ${invite.roomId})`;
-        modal.style.display = "flex";
-
-        // ボタンのハンドラ登録
-        document.getElementById('invite-accept-btn').onclick = () => {
-            modal.style.display = "none";
-            // 招待データを消去して移動
-            remove(ref(db, `users/${myUserId}/invites/${latestKey}`)).then(() => {
-                window.location.href = `${redirectUrl}?room=${invite.roomId}`;
-            });
-        };
-
-        document.getElementById('invite-decline-btn').onclick = () => {
-            modal.style.display = "none";
-            // 招待データを消去
-            remove(ref(db, `users/${myUserId}/invites/${latestKey}`));
-        };
-    });
-}

@@ -6,7 +6,6 @@
     <title>お絵描き伝言ゲーム</title>
     <link rel="stylesheet" href="style.css">
     <script type="module" src="app.js"></script>
-    <script src="../corner-mode.js" defer></script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="お絵描き伝言ゲーム">
@@ -26,39 +25,13 @@
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
     <link rel="stylesheet" href="/pwa.css">
     <script type="module" src="/pwa.js"></script>
+    <link rel="stylesheet" href="/table.css">
 </head>
 <body>
 
 <div class="container">
     <!-- セットアップ画面 -->
-    <div id="screen-setup" class="screen active">
-        <h1>📞 お絵描き伝言ゲーム</h1>
-        <p>「お題を書く ➔ 描く ➔ 推測する ➔ 描く」を交代で繰り返し、最後に答えがどう伝わったか発表し合おう！</p>
-        <div style="margin-bottom: 15px;">
-            あなたの名前：<br><input type="text" id="user-name" placeholder="プレイヤー名" style="width: 250px;" maxlength="40">
-        </div>
-        <div style="margin-bottom: 15px;">
-            部屋のパスワード（自由な英数字）：<br><input type="text" id="room-id" placeholder="例: den-gon" style="width: 250px;" maxlength="64" pattern="[A-Za-z0-9_-]+">
-        </div>
-        <p style="font-size: 13px; color: #7f8c8d; max-width: 400px; margin: 0 auto 15px;">※同じパスワードを入力した人と自動的に同じ部屋に入ります。遊ぶには2人以上が必要です！</p>
-        <button onclick="connectLobby()">部屋に入る / 作る</button>
-        <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:10px;">ゲーム選択に戻る</button>
-
-        <!-- 遊び方説明カード -->
-        <div class="instructions-card">
-            <h3>📖 遊び方ルール（2人以上用）</h3>
-            <ul>
-                <li><strong>ステップ 1（お題設定）：</strong>次の人が絵に描きやすい（またはおもしろい）お題を入力して送信します。</li>
-                <li><strong>ステップ 2（お絵描き）：</strong>隣の人が書いたお題を見て、キャンバスにお絵描きします。</li>
-                <li><strong>ステップ 3（言葉で推測）：</strong>さらに隣の人が描いた絵だけを見て、お題が何か推測して文字を入力します。</li>
-                <li><strong>ステップ 4（最後のお絵描き）：</strong>さらに隣の人が推測した言葉だけを見て、最後の絵を描きます。</li>
-                <li><strong>発表会：</strong>全員が終わると、お題がどう伝言されて変わっていったか順番に振り返り発表会を行います！</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- 待機ロビー画面 -->
-    <div id="screen-lobby" class="screen">
+    <div id="screen-lobby" class="screen active">
         <h2 id="lobby-room-title">部屋パスワード: --</h2>
         <button id="lobby-invite-btn" onclick="openLobbyInviteModal()" style="background-color: #3498db; border-bottom: 4px solid #2980b9; padding: 8px 16px; font-size: 13px; margin-bottom: 12px; display: none;">👥 フレンドを招待</button>
         <p>一緒に遊ぶ友達に上のパスワードを教えてあげてね。全員集まるまで待機！</p>
@@ -67,7 +40,7 @@
             <div id="lobby-players-list"></div>
         </div>
         <br>
-        <button id="start-game-btn" onclick="hostStartGame()" style="display:none; background-color: #27ae60; border-color: #1e8449;">ゲームをスタートする！</button>
+        <button id="start-game-btn" hidden></button>
         <p id="wait-host-msg" style="font-size: 14px; color:#7f8c8d;">※ホスト（一番最初に入った人）がスタートボタンを押すと始まります。</p>
     </div>
 
@@ -187,7 +160,7 @@
             <div class="showcase-nav">
                 <button id="next-chain-btn" onclick="nextShowcaseChain()" style="background-color: #2980b9; border-color: #21618c; font-size: 18px;">次の人の伝言を見る ➔</button>
                 <button id="restart-game-btn" onclick="restartTelephoneGame()" style="display:none; background-color: #27ae60; border-color: #1e8449; font-size: 18px;">もう一度遊ぶ</button>
-                <button onclick="location.href='../index.html'" style="background-color: #7f8c8d; border-color:#626d6e; margin-left:15px;">ゲーム選択に戻る</button>
+
             </div>
         </div>
     </div>

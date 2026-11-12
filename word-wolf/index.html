@@ -6,7 +6,6 @@
     <title>ワードウルフ</title>
     <link rel="stylesheet" href="style.css">
     <script type="module" src="app.js"></script>
-    <script src="../corner-mode.js" defer></script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="ワードウルフ">
@@ -26,48 +25,23 @@
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
     <link rel="stylesheet" href="/pwa.css">
     <script type="module" src="/pwa.js"></script>
+    <link rel="stylesheet" href="/table.css">
 </head>
 <body>
 <div class="container">
 
     <!-- セットアップ画面 -->
-    <div id="screen-setup" class="screen active">
-        <h1>🐺 ワードウルフ</h1>
-        <p>みんな似たようなワードを持っているが、1人だけ違うワードの「ウルフ」がいる！<br>話し合いでウルフを見つけ出せ！</p>
-        <div style="margin-bottom:12px;">
-            あなたの名前：<br>
-            <input type="text" id="user-name" placeholder="プレイヤー名" style="width:250px;" maxlength="40">
-        </div>
-        <div style="margin-bottom:12px;">
-            部屋のパスワード：<br>
-            <input type="text" id="room-id" placeholder="例: wolf123" style="width:250px;" maxlength="64" pattern="[A-Za-z0-9_-]+">
-        </div>
-        <p style="font-size:13px;color:#7f8c8d;max-width:400px;margin:0 auto 15px;">※同じパスワードを入力した人と同じ部屋に入ります。</p>
-        <button onclick="connectLobby()">部屋に入る / 作る</button>
-        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
-        <div class="instructions-card">
-            <h3>📖 遊び方ルール</h3>
-            <ul>
-                <li><strong>ワード配布：</strong>市民には同じワード、ウルフ（1人）だけ少し違うワードが配られます。</li>
-                <li><strong>話し合い（3分）：</strong>自分のワードを直接言わずに、ヒントになることを話します。</li>
-                <li><strong>投票：</strong>ウルフだと思う人に投票！最多票を取られた人が処刑されます。</li>
-                <li><strong>勝敗：</strong>ウルフが処刑されたら市民の勝ち！ウルフが生き残れば逆転勝利！</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- ロビー画面 -->
-    <div id="screen-lobby" class="screen">
+    <div id="screen-lobby" class="screen active">
         <h2 id="lobby-room-title">部屋: --</h2>
         <button id="lobby-invite-btn" onclick="openLobbyInviteModal()" style="display:none;background-color:#3498db;border-color:#2980b9;padding:8px 16px;font-size:13px;margin-bottom:12px;">👥 フレンドを招待</button>
-        <p>全員集まったらホストがスタートを押してください！（最低3人必要）</p>
+
         <div class="lobby-list">
             <div style="font-weight:bold;border-bottom:2px dashed #9c826b;padding-bottom:5px;margin-bottom:10px;">参加中メンバー：</div>
             <div id="lobby-players-list"></div>
         </div>
-        <button id="start-game-btn" onclick="hostStartGame()" style="display:none;background-color:#27ae60;border-color:#1e8449;margin-top:15px;">ゲームをスタート！</button>
+        <button id="start-game-btn" hidden></button>
         <p id="wait-host-msg" style="font-size:14px;color:#7f8c8d;margin-top:10px;">※ホストがスタートボタンを押すと始まります。</p>
-        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;font-size:13px;margin-top:5px;">ゲーム選択に戻る</button>
+
     </div>
 
     <!-- ワード確認画面 -->
@@ -126,8 +100,8 @@
         <div id="result-word-reveal" class="word-reveal-box" style="max-width:400px;margin:15px auto;"></div>
         <div id="result-players-list" class="result-players"></div>
         <div style="margin-top:25px;text-align:center;">
-            <button id="restart-btn" onclick="restartGame()" style="display:none;background-color:#27ae60;border-color:#1e8449;font-size:17px;">もう一度遊ぶ（ホストのみ）</button>
-            <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+
+
         </div>
     </div>
 

@@ -1,6 +1,8 @@
+import {tableReady,bindLegacy,onTableState} from '../table-client.js';
 import { getDatabase, ref, set, push, onValue, update, get, ready, onReady, sendInvite, addFriend } from "../sync.js";
 
 const account = await ready;
+const table = await tableReady;
 const db = getDatabase();
 
 const raceTexts = [
@@ -18,9 +20,9 @@ const raceTexts = [
 
 const RPATH = (id) => `typing-race-rooms/${id}`;
 
-let roomId = "";
-let myPlayerId = "";
-let myPlayerName = "";
+let roomId = table.code;
+let myPlayerId = account.uid;
+let myPlayerName = table.name;
 let myUserId = localStorage.getItem('userId') || "";
 let isHost = false;
 let roomState = null;
@@ -31,59 +33,13 @@ let raceStartTime = 0;
 let myFinished = false;
 let isTransitioning = false;
 
-onReady(() => {
-    const saved = localStorage.getItem('username');
-    if (saved) document.getElementById('user-name').value = saved;
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get('room');
-    if (roomParam) document.getElementById('room-id').value = roomParam;
-});
+onReady(() => { onTableState(state => { isHost = state.meta.hostId === account.uid; }); bindLegacy(listenToRoom, () => window.hostStartGame()); });
 
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const el = document.getElementById(`screen-${id}`);
     if (el) el.classList.add('active');
 }
-
-window.connectLobby = async function() {
-    const name = document.getElementById('user-name').value.trim();
-    const room = document.getElementById('room-id').value.trim();
-    if (!name || !room) { alert("名前と部屋IDを入力してください"); return; }
-
-    myPlayerName = name;
-    roomId = room;
-    myPlayerId = account.uid;
-    localStorage.setItem('username', name);
-
-    const snap = await get(ref(db, RPATH(roomId)));
-    let createNew = !snap.exists();
-
-    if (snap.exists()) {
-        const data = snap.val();
-        if (data.phase !== "lobby" && data.phase !== "result") {
-            alert("このゲームはすでに進行中です。別の部屋IDをお試しください。");
-            return;
-        }
-        if (data.phase === "result") createNew = true;
-    }
-
-    if (createNew) {
-        isHost = true;
-        await set(ref(db, RPATH(roomId)), {
-            phase: "lobby", hostId: myPlayerId, createdAt: Date.now()
-        });
-    }
-
-    await set(ref(db, `${RPATH(roomId)}/players/${myPlayerId}`), {
-        name: myPlayerName, progress: 0, finishTime: 0, joinedAt: Date.now()
-    });
-
-    if (createNew) await update(ref(db, RPATH(roomId)), { hostId: myPlayerId });
-
-    listenToRoom();
-    showScreen("lobby");
-    document.getElementById('lobby-room-title').textContent = `部屋: ${roomId}`;
-};
 
 function listenToRoom() {
     onValue(ref(db, RPATH(roomId)), (snap) => {

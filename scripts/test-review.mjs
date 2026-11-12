@@ -44,7 +44,7 @@ try {
   held.forEach(c => c.close());
   await fixture({ op: 'lateAlarm' });
   const idle = await open(undefined, undefined, { ip: '192.0.2.31' }), idleId = await idle.auth();
-  assert((await fixture({})).nextAlarm <= Date.now() + 30000, 'new connection must bring a maintenance-only alarm forward');
+  const alarmState=await fixture({});assert(alarmState.nextAlarm <= alarmState.now + 30000, 'new connection must bring a maintenance-only alarm forward');
   const aged = await fixture({ op: 'ageSocket', ip: '192.0.2.31', remaining: 5000 });
   const lastAction = aged.sockets.find(s => s.uid === idleId.uid).lastAction;
   await idle.request('update', { path: `users/${idleId.uid}`, value: { status: 'online', lastActive: Date.now() } });

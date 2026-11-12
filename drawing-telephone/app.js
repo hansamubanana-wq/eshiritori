@@ -1,33 +1,20 @@
+import {tableReady,bindLegacy,onTableState} from '../table-client.js';
 import { getDatabase, ref, set, onValue, update, get, remove, push, ready, onReady, sendInvite, addFriend } from "../sync.js";
 
 const account = await ready;
+const table = await tableReady;
 const db = getDatabase();
 
-let roomId = "";
-let myPlayerName = "";
-let myPlayerId = "";
+let roomId = table.code;
+let myPlayerName = table.name;
+let myPlayerId = account.uid;
 let myUserId = localStorage.getItem('userId') || "";
 let isHost = false;
 let roomState = null;
 let lastSyncStep = -1;
 
 // アカウント名自動入力とURLクエリによる自動入室
-onReady(() => {
-    const savedName = localStorage.getItem('username');
-    if (savedName) {
-        document.getElementById('user-name').value = savedName;
-    }
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get('room');
-    if (roomParam) {
-        document.getElementById('room-id').value = roomParam;
-        if (savedName) {
-            setTimeout(() => {
-                window.connectLobby();
-            }, 300);
-        }
-    }
-});
+onReady(() => { onTableState(state => { isHost = state.meta.hostId === account.uid; }); bindLegacy(listenToRoom, () => window.hostStartGame()); });
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -42,77 +29,6 @@ function changeScreen(screenId) {
 }
 
 // 接続処理
-window.connectLobby = function() {
-    myPlayerName = document.getElementById('user-name').value.trim();
-    roomId = document.getElementById('room-id').value.trim();
-    if(!myPlayerName || !roomId) {
-        alert("なまえ と 部屋パスワード をいれてね！");
-        return;
-    }
-    myPlayerId = account.uid;
-    
-    const roomRef = ref(db, 'rooms-telephone/' + roomId);
-    get(roomRef).then((snapshot) => {
-        if (snapshot.exists()) {
-            let data = snapshot.val();
-            // 古い・または終了した部屋の場合はホストがリセット
-            if (data.status === "playing") { alert("このゲームはすでに進行中です。"); return; }
-            if (data.status === "result") {
-                isHost = true;
-                createRoom(); 
-            } else {
-                isHost = false;
-                joinRoom();
-            }
-        } else {
-            isHost = true;
-            createRoom();
-        }
-    });
-}
-
-function createRoom() {
-    const roomRef = ref(db, 'rooms-telephone/' + roomId);
-    const initialData = {
-        status: "waiting",
-        currentStep: 0,
-        playersOrder: [myPlayerId],
-        players: {
-            [myPlayerId]: { name: myPlayerName, isHost: true, submitted: false }
-        },
-        showcaseIndex: 0
-    };
-
-    set(roomRef, initialData).then(() => {
-        listenToRoom();
-        changeScreen('screen-lobby');
-        if (myUserId) {
-            update(ref(db, `users/${myUserId}`), { status: "playing_telephone" });
-        }
-    });
-}
-
-function joinRoom() {
-    const playerRef = ref(db, `rooms-telephone/${roomId}/players/${myPlayerId}`);
-    set(playerRef, { name: myPlayerName, isHost: false, submitted: false }).then(() => {
-        get(ref(db, 'rooms-telephone/' + roomId)).then((snapshot) => {
-            let data = snapshot.val();
-            let order = data.playersOrder || [];
-            if (!order.includes(myPlayerId)) {
-                order.push(myPlayerId);
-            }
-            update(ref(db, 'rooms-telephone/' + roomId), { playersOrder: order });
-        });
-        
-        listenToRoom();
-        changeScreen('screen-lobby');
-        if (myUserId) {
-            update(ref(db, `users/${myUserId}`), { status: "playing_telephone" });
-        }
-    });
-}
-
-// 部屋の状態監視
 function listenToRoom() {
     const roomRef = ref(db, 'rooms-telephone/' + roomId);
     onValue(roomRef, (snapshot) => {
@@ -218,7 +134,8 @@ function submitTurnData(data) {
 
 // 進行同期
 function syncGameFlow() {
-    const isSubmitted = roomState.players[myPlayerId].submitted;
+    if(!roomState.players[myPlayerId]) { changeScreen('screen-waiting'); return; }
+    const isSubmitted = roomState.players[myPlayerId]?.submitted;
     
     if (isSubmitted) {
         showWaitingScreen();

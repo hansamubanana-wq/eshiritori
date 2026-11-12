@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from './index';
 import { GAME_NAMES, GAME_TYPES, uid, roomCode } from './schema';
+import {fixedTable} from '../../catalog.js';
 import { attachment, assert, fail, LIMITS, parse, parts, plain, read, send, subscription, saveAttachment, type Attachment } from './wire';
 
 type Account = { id: string; hash: string; code: string; profile: string; friends: string; invites: string; created_ip: string; last_used: number };
@@ -57,6 +58,12 @@ export class Accounts extends DurableObject<Env> {
   }
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
+    if(url.pathname==='/identity'&&req.method==='POST') {
+      const m=await req.json<any>(),own=uid(m.id)?this.account(m.id):null;
+      if(!own)return Response.json({ok:false});
+      if(m.touch){this.touch(m.id);for(const ws of this.ctx.getWebSockets()){const a=ws.deserializeAttachment() as Attachment;if(a.uid===m.id&&this.active(ws)&&!this.expired(a)){a.lastAction=Date.now();ws.serializeAttachment(a);}}}
+      return Response.json({ok:true,name:JSON.parse(own.profile).name||''});
+    }
     // Only a binding can reach these paths: the public Worker routes exclusively /ws.
     if (url.pathname === '/verify' && req.method === 'POST') {
       const { id, token } = await req.json<any>();
@@ -72,7 +79,7 @@ export class Accounts extends DurableObject<Env> {
         assert(ticket && ticket.expires > Date.now() && ticket.ip === body.ip && ticket.room === `${body.game}/${body.code}` && this.account(ticket.uid), 'invalid_ticket');
         this.cleanup();
         this.ctx.storage.transactionSync(() => {
-          if (!this.ctx.storage.sql.exec('SELECT name FROM room_registry WHERE name = ?', ticket.room).toArray().length) {
+          if (ticket.room!=='lobby/main'&&!this.ctx.storage.sql.exec('SELECT name FROM room_registry WHERE name = ?', ticket.room).toArray().length) {
             assert(this.ctx.storage.sql.exec<{n:number}>('SELECT count(*) AS n FROM room_registry').toArray()[0].n < LIMITS.activeRooms, 'rooms_full');
             this.quota(`rooms:${ticket.uid}`, 30); this.quota(`new-room-ip:${body.ip}`, 60);
             this.ctx.storage.sql.exec('INSERT INTO room_registry VALUES (?, ?)', ticket.room, Date.now() + LIMITS.reservationTTL);
@@ -84,7 +91,10 @@ export class Accounts extends DurableObject<Env> {
     }
     if (url.pathname === '/room-activity' && req.method === 'POST') {
       const { id, room } = await req.json<any>(); const account = uid(id) ? this.account(id) : null;
-      if (!account || !this.ctx.storage.sql.exec('SELECT name FROM room_registry WHERE name = ? AND expires > ?', room, Date.now()).toArray().length) return Response.json({ ok: false });
+      const [game,code]=typeof room==='string'?room.split('/'):[];
+      const fixed=fixedTable(game,code)&&room===`${game}/${code}`;
+      if (!account || !fixed&&!this.ctx.storage.sql.exec('SELECT name FROM room_registry WHERE name = ? AND expires > ?', room, Date.now()).toArray().length) return Response.json({ ok: false });
+      if(fixed)this.ctx.storage.sql.exec('INSERT OR REPLACE INTO room_registry VALUES (?, ?)',room,Date.now()+LIMITS.ttl);
       this.touch(id);
       for (const ws of this.ctx.getWebSockets()) {
         const a = ws.deserializeAttachment() as Attachment;
@@ -162,8 +172,9 @@ export class Accounts extends DurableObject<Env> {
         const presenceOnly = ['set', 'update', 'disconnect'].includes(m.op) && typeof m.path === 'string' && m.path.startsWith(`users/${a.uid}`) &&
           (['status', 'lastActive'].includes(m.path.split('/')[2]) || plain(m.value) && Object.keys(m.value).every(k => ['status', 'lastActive'].includes(k)));
         if (!presenceOnly) { a.lastAction = Date.now(); this.touch(a.uid); }
-        if (m.op === 'roomTicket') {
-          assert(typeof m.game === 'string' && GAME_TYPES.includes(m.game) && roomCode(m.room), 'invalid_room');
+        if (m.op === 'roomTicket' || m.op==='lobbyTicket') {
+          if(m.op==='lobbyTicket'){m.game='lobby';m.room='main';}
+          else assert(typeof m.game === 'string' && GAME_TYPES.includes(m.game) && roomCode(m.room), 'invalid_room');
           this.quota(`ticket-ip:${a.ip || this.ctx.getTags(ws)[0]}`, 120, 60000);
           this.ctx.storage.sql.exec('DELETE FROM tickets WHERE expires <= ?', Date.now());
           assert(this.ctx.storage.sql.exec<{n:number}>('SELECT count(*) AS n FROM tickets WHERE uid = ?', a.uid).toArray()[0].n < 8, 'tickets_full');
@@ -218,19 +229,19 @@ export class Accounts extends DurableObject<Env> {
           assert(typeof m.gameType === 'string' && Object.hasOwn(GAME_NAMES, m.gameType) && roomCode(m.roomId), 'invalid_invite');
           this.quota(`invite:${a.uid}`, 30, 60000);
           const game = GAME_NAMES[m.gameType];
-          assert(this.ctx.storage.sql.exec('SELECT name FROM room_registry WHERE name = ? AND expires > ?', `${game}/${m.roomId}`, Date.now()).toArray().length, 'not_member');
-          const check = await this.env.ROOMS.get(this.env.ROOMS.idFromName(`${game}/${m.roomId}`)).fetch(new Request('https://internal/member', { method: 'POST', body: JSON.stringify({ uid: a.uid }) }));
+          assert(fixedTable(game,m.roomId),'invalid_table');
+          const check = await this.env.TABLES.get(this.env.TABLES.idFromName(`${game}/${m.roomId}`)).fetch(new Request('https://internal/member', { method: 'POST', body: JSON.stringify({ uid: a.uid }) }));
           assert((await check.json<any>()).ok, 'not_member');
           const friend = this.account(m.to); assert(friend, 'friend_not_found');
           const inv = JSON.parse(friend.invites);
           for (const [k, v] of Object.entries(inv)) if (Date.now() - (v as any).timestamp > 60000) delete inv[k];
           assert(Object.keys(inv).length < 20, 'invites_full');
-          inv[`k_${key()}`] = { fromName: JSON.parse(own.profile).name, roomId: m.roomId, gameType: m.gameType, timestamp: Date.now() };
+          inv[`k_${key()}`] = { fromName: JSON.parse(own.profile).name, tableId: m.roomId, roomId: m.roomId, gameType: m.gameType, timestamp: Date.now() };
           this.ctx.storage.sql.exec('UPDATE accounts SET invites = ? WHERE id = ?', JSON.stringify(inv), friend.id);
         } else throw new Error('invalid_operation');
       }
       saveAttachment(ws, a);
-      if (!['get', 'subscribe', 'unsubscribe', 'disconnect', 'roomTicket'].includes(m.op)) this.broadcast();
+      if (!['get', 'subscribe', 'unsubscribe', 'disconnect', 'roomTicket','lobbyTicket'].includes(m.op)) this.broadcast();
       send(ws, { id: m.id, value });
     } catch (e) { saveAttachment(ws, a); fail(ws, m?.id, e); if ((e as Error).message === 'connection_expired') ws.close(4002, 'connection_expired'); }
   }

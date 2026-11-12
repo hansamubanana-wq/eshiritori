@@ -6,7 +6,6 @@
     <title>クイズバトル</title>
     <link rel="stylesheet" href="style.css">
     <script type="module" src="app.js"></script>
-    <script src="../corner-mode.js" defer></script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="クイズバトル">
@@ -26,47 +25,23 @@
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
     <link rel="stylesheet" href="/pwa.css">
     <script type="module" src="/pwa.js"></script>
+    <link rel="stylesheet" href="/table.css">
 </head>
 <body>
 <div class="container">
 
     <!-- セットアップ画面 -->
-    <div id="screen-setup" class="screen active">
-        <h1>🧠 クイズバトル</h1>
-        <p>全員同時に4択クイズに挑戦！早く正解すればするほど高得点！</p>
-        <div style="margin-bottom:12px;">
-            あなたの名前：<br>
-            <input type="text" id="user-name" placeholder="プレイヤー名" style="width:250px;" maxlength="40">
-        </div>
-        <div style="margin-bottom:12px;">
-            部屋のパスワード：<br>
-            <input type="text" id="room-id" placeholder="例: quiz456" style="width:250px;" maxlength="64" pattern="[A-Za-z0-9_-]+">
-        </div>
-        <button onclick="connectLobby()">部屋に入る / 作る</button>
-        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
-        <div class="instructions-card">
-            <h3>📖 遊び方ルール</h3>
-            <ul>
-                <li><strong>問題：</strong>1問10秒。4択から正解を選ぼう！</li>
-                <li><strong>得点：</strong>正解すると最大<strong>100点</strong>。早いほど高得点！</li>
-                <li><strong>問題数：</strong>全10問。最終スコアで順位が決まります。</li>
-                <li><strong>ホスト：</strong>問題ごとに「次の問題へ」ボタンが表示されます。</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- ロビー画面 -->
-    <div id="screen-lobby" class="screen">
+    <div id="screen-lobby" class="screen active">
         <h2 id="lobby-room-title">部屋: --</h2>
         <button id="lobby-invite-btn" onclick="openLobbyInviteModal()" style="display:none;background-color:#3498db;border-color:#2980b9;padding:8px 16px;font-size:13px;margin-bottom:12px;">👥 フレンドを招待</button>
-        <p>全員集まったらホストがスタートを押してください！</p>
+
         <div class="lobby-list">
             <div style="font-weight:bold;border-bottom:2px dashed #9c826b;padding-bottom:5px;margin-bottom:10px;">参加中メンバー：</div>
             <div id="lobby-players-list"></div>
         </div>
-        <button id="start-game-btn" onclick="hostStartGame()" style="display:none;background-color:#9b59b6;border-color:#8e44ad;margin-top:15px;">クイズスタート！🧠</button>
+        <button id="start-game-btn" hidden></button>
         <p id="wait-host-msg" style="font-size:14px;color:#7f8c8d;margin-top:10px;">※ホストがスタートボタンを押すと始まります。</p>
-        <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;font-size:13px;margin-top:5px;">ゲーム選択に戻る</button>
+
     </div>
 
     <!-- クイズ画面 -->
@@ -94,8 +69,8 @@
         <h2>🏆 最終結果！</h2>
         <div id="result-leaderboard" class="result-leaderboard"></div>
         <div style="margin-top:25px;text-align:center;">
-            <button id="restart-btn" onclick="restartGame()" style="display:none;background-color:#9b59b6;border-color:#8e44ad;font-size:17px;">もう一度遊ぶ（ホストのみ）</button>
-            <button onclick="location.href='../index.html'" style="background-color:#7f8c8d;border-color:#626d6e;margin-left:10px;">ゲーム選択に戻る</button>
+
+
         </div>
     </div>
 

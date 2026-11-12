@@ -13,10 +13,12 @@
   "durable_objects": {
     "bindings": [
       { "name": "ROOMS", "class_name": "Room" },
-      { "name": "ACCOUNTS", "class_name": "Accounts" }
+      { "name": "ACCOUNTS", "class_name": "Accounts" },
+      { "name": "LOBBY", "class_name": "Lobby" },
+      { "name": "TABLES", "class_name": "Table" }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room", "Accounts"] }],
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room", "Accounts"] }, { "tag": "v2", "new_sqlite_classes": ["Lobby", "Table"] }],
   "vars": { "PUBLIC_ORIGIN": "https://eshiritori.hansamubanana.workers.dev" },
   "observability": { "enabled": false }
 }
