@@ -41,6 +41,23 @@ try {
     await a.evaluate(async code => (await import('/sync.js')).addFriend(code), identityB.friendCode);
     await a.locator('.friend-item').waitFor(); await b.locator('.friend-item').waitFor();
     results.push('Portal: profile registration and reciprocal friend UI');
+    for (const width of [375, 768, 1280]) {
+        await a.setViewportSize({ width, height: 1000 });
+        assert(await a.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `portal overflow at ${width}`);
+        await a.screenshot({ path: `test-results/portal-${width}.png` });
+    }
+    await a.setViewportSize({ width: 1280, height: 900 });
+    const interaction = await a.evaluate(() => {
+        const bodyEvent = new Event('contextmenu', { bubbles: true, cancelable: true });
+        const inputEvent = new Event('contextmenu', { bubbles: true, cancelable: true });
+        document.body.dispatchEvent(bodyEvent);
+        document.getElementById('friend-code-input').dispatchEvent(inputEvent);
+        const gesture = new Event('gesturestart', { cancelable: true }); document.dispatchEvent(gesture);
+        return { body: bodyEvent.defaultPrevented, input: inputEvent.defaultPrevented, gesture: gesture.defaultPrevented,
+            bodySelect: getComputedStyle(document.body).userSelect, inputSelect: getComputedStyle(document.querySelector('input')).userSelect };
+    });
+    assert.deepEqual(interaction, { body: true, input: false, gesture: true, bodySelect: 'none', inputSelect: 'text' });
+    results.push('Interaction: gesture/context menu blocked; input editing allowed');
     const games = [
         ['eshiritori', 'rooms'], ['drawing-quiz', 'rooms-quiz'], ['drawing-telephone', 'rooms-telephone'],
         ['word-wolf', 'word-wolf-rooms'], ['typing-race', 'typing-race-rooms'], ['quiz-battle', 'quiz-battle-rooms'], ['memory-cards', 'memory-card-rooms'],

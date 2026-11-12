@@ -16,8 +16,8 @@ export class Client {
             this.pending.clear();
         });
     }
-    static async open(game, room, origin = new URL(BASE).origin) {
-        const url = new URL('/ws', BASE); url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    static async open(game, room, origin = new URL(BASE).origin, base = BASE) {
+        const url = new URL('/ws', base); url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
         if (game) { url.searchParams.set('game', game); url.searchParams.set('room', room); }
         const socket = new WebSocket(url, { origin });
         await new Promise((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); });

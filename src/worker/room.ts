@@ -64,7 +64,7 @@ export class Room extends DurableObject<Env> {
             assert((await r.json<any>()).ok, 'rooms_full');
           }
           this.mutate(a.uid, changes);
-          await this.ctx.storage.setAlarm(this.touched + LIMITS.ttl);
+          await this.schedule();
         }
       }
       ws.serializeAttachment(a);
@@ -152,7 +152,8 @@ export class Room extends DurableObject<Env> {
       const entries = Object.entries(candidate[field]); if (entries.length > 200) candidate[field] = Object.fromEntries(entries.slice(-200));
     }
     validate(SCHEMAS[this.game], candidate);
-    const json = JSON.stringify(candidate); assert(bytes(json) <= LIMITS.room, 'room_too_large');
+    const json = JSON.stringify(candidate);
+    assert(bytes(json) + bytes(JSON.stringify(members)) + bytes(this.game + this.code + nextHost) <= LIMITS.room, 'room_too_large');
     const touched = Date.now();
     this.ctx.storage.sql.exec('CREATE TABLE IF NOT EXISTS room (id INTEGER PRIMARY KEY, game TEXT, code TEXT, state TEXT, host TEXT, members TEXT, touched INTEGER)');
     this.ctx.storage.sql.exec('INSERT OR REPLACE INTO room VALUES (1, ?, ?, ?, ?, ?, ?)', this.game, this.code, json, nextHost, JSON.stringify(members), touched);
@@ -163,6 +164,15 @@ export class Room extends DurableObject<Env> {
       const a = ws.deserializeAttachment() as Attachment; if (!a.uid) continue;
       for (const [sub, path] of Object.entries(a.subs)) send(ws, { sub, value: this.readPath(path) });
     }
+  }
+  private async schedule() {
+    let next = this.touched ? this.touched + LIMITS.ttl : Date.now() + 30000;
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = ws.deserializeAttachment() as Attachment;
+      if (!a.uid && ws.readyState === WebSocket.OPEN) next = Math.min(next, a.opened + 30000);
+    }
+    const current = await this.ctx.storage.getAlarm();
+    if (current === null || current > next) await this.ctx.storage.setAlarm(next);
   }
   async webSocketClose(ws: WebSocket) { try { ws.close(); } catch {} }
   async webSocketError(ws: WebSocket) { try { ws.close(); } catch {} }
